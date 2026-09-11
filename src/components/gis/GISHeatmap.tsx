@@ -79,17 +79,17 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
           subdomains: ['a', 'b', 'c'],
           maxZoom: 20,
           maxNativeZoom: 16,
-          attribution: '© OpenStreetMap'
+          attribution: '© OpenStreetMap Dark'
         };
       case 'dark':
       default:
         return {
-          url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          className: 'leaflet-tile-dark',
-          subdomains: ['a', 'b', 'c'],
+          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+          className: 'leaflet-tile-esri-dark',
+          subdomains: [] as string[],
           maxZoom: 20,
           maxNativeZoom: 16,
-          attribution: '© OpenStreetMap Pitch Black'
+          attribution: '© Esri Dark Gray'
         };
     }
   };
@@ -535,7 +535,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
           </label>
         </div>
 
-        {/* Basemap Style Toggle: Zero Watermark Pitch-Black / Satellite / Slate */}
+        {/* Basemap Style Toggle: Zero Watermark Dark Theme / Satellite / Dark Streets */}
         <div className="flex items-center gap-1.5 p-1 rounded-lg border border-[#232731] bg-[#121418]">
           <button
             onClick={() => setBasemapType('dark')}
@@ -543,7 +543,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
               basemapType === 'dark' ? 'bg-[#22262f] text-[#a3e635] font-bold' : 'text-[#717682] hover:text-white'
             }`}
           >
-            Pitch Black
+            Dark Theme
           </button>
           <button
             onClick={() => setBasemapType('satellite')}
@@ -559,7 +559,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
               basemapType === 'street-dark' ? 'bg-[#22262f] text-[#a3e635] font-bold' : 'text-[#717682] hover:text-white'
             }`}
           >
-            Tactical Dark
+            Dark Streets
           </button>
         </div>
       </div>

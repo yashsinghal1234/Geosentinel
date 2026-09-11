@@ -609,17 +609,66 @@ interface GeoSentinelContextType {
   flushGatewayBuffer: () => void;
 }
 
+// Cookie persistence helpers
+export const setCookie = (name: string, value: string, days: number = 7) => {
+  if (typeof document === 'undefined') return;
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+};
+
+export const getCookie = (name: string): string | null => {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+};
+
+export const deleteCookie = (name: string) => {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax`;
+};
+
+const getInitialAuth = (): { isAuthenticated: boolean; user: UserProfile } => {
+  try {
+    if (typeof window !== 'undefined') {
+      const cookieAuth = getCookie('geosentinel_auth');
+      const localAuth = localStorage.getItem('geosentinel_auth');
+      const authStr = cookieAuth || localAuth;
+      if (authStr) {
+        const parsed = JSON.parse(authStr);
+        if (parsed && parsed.isAuthenticated) {
+          return {
+            isAuthenticated: true,
+            user: parsed.user || {
+              name: 'S. K. Verma',
+              role: 'Chief Mining Safety Engineer',
+              email: 'verma.sk@geosentinel.gov.in',
+              badge: 'OPERATOR L3',
+            },
+          };
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to restore auth from cookie/storage:", e);
+  }
+  return {
+    isAuthenticated: false,
+    user: {
+      name: 'S. K. Verma',
+      role: 'Chief Mining Safety Engineer',
+      email: 'verma.sk@geosentinel.gov.in',
+      badge: 'OPERATOR L3',
+    },
+  };
+};
+
 const GeoSentinelContext = createContext<GeoSentinelContextType | undefined>(undefined);
 
 export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const initialAuth = getInitialAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(initialAuth.isAuthenticated);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<UserProfile>({
-    name: 'S. K. Verma',
-    role: 'Chief Mining Safety Engineer',
-    email: 'verma.sk@geosentinel.gov.in',
-    badge: 'OPERATOR L3',
-  });
+  const [currentUser, setCurrentUser] = useState<UserProfile>(initialAuth.user);
 
   const [selectedMine, setSelectedMine] = useState<string>('jharia-04');
   const [selectedSector, setSelectedSector] = useState<string>('all');
@@ -635,7 +684,9 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [scenario, setScenarioState] = useState<SimulationScenario>('baseline');
   const [userRole, setUserRole] = useState<UserRole>('operator');
   const [language, setLanguage] = useState<SupportedLanguage>('en');
-  const [activeTab, setActiveTab] = useState<'landing' | 'operator' | 'gis' | 'topology' | 'gateway' | 'public' | 'citizen' | 'admin'>('landing');
+  const [activeTab, setActiveTab] = useState<'landing' | 'operator' | 'gis' | 'topology' | 'gateway' | 'public' | 'citizen' | 'admin'>(
+    initialAuth.isAuthenticated ? 'operator' : 'landing'
+  );
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [rainfallRate, setRainfallRate] = useState<number>(4.2);
   const [audioMuted, setAudioMuted] = useState<boolean>(false);
@@ -653,6 +704,13 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
   const login = useCallback(async (email?: string, password?: string) => {
     try {
       let data: any = null;
+      let userObj: UserProfile = {
+        name: email?.includes('admin') ? 'Directorate General (Admin)' : 'S. K. Verma (Chief Engineer)',
+        role: email?.includes('admin') ? 'admin' : 'operator',
+        email: email || 'operator@geosentinel.gov.in',
+        badge: email?.includes('admin') ? 'ADMIN' : 'OPERATOR L3',
+      };
+
       try {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
@@ -668,34 +726,30 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
           }
         }
         if (res.ok && data) {
-          setIsAuthenticated(true);
-          setIsLoginModalOpen(false);
-          setActiveTab('operator');
-          setCurrentUser({
+          userObj = {
             name: data.name || 'Chief Mining Safety Engineer',
             role: data.role || 'operator',
             email: data.email || email || 'operator@geosentinel.gov.in',
             badge: (data.role || 'OPERATOR').toUpperCase(),
-          });
+          };
           if (data.token || data.access_token) {
+            setCookie('geosentinel_token', data.token || data.access_token, 7);
             localStorage.setItem('geosentinel_token', data.token || data.access_token);
           }
-          return;
         }
       } catch (networkErr) {
         console.warn("Backend auth unreachable, utilizing offline demo session:", networkErr);
       }
 
-      // Offline demo login fallback
       setIsAuthenticated(true);
       setIsLoginModalOpen(false);
       setActiveTab('operator');
-      setCurrentUser({
-        name: email?.includes('admin') ? 'Directorate General (Admin)' : 'S. K. Verma (Chief Engineer)',
-        role: email?.includes('admin') ? 'admin' : 'operator',
-        email: email || 'operator@geosentinel.gov.in',
-        badge: email?.includes('admin') ? 'ADMIN' : 'OPERATOR L3',
-      });
+      setCurrentUser(userObj);
+
+      // Persist auth in cookies and localStorage
+      const authData = JSON.stringify({ isAuthenticated: true, user: userObj });
+      setCookie('geosentinel_auth', authData, 7);
+      localStorage.setItem('geosentinel_auth', authData);
     } catch (err: any) {
       console.error("Login error:", err);
     }
@@ -704,6 +758,10 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
   const logout = useCallback(() => {
     setIsAuthenticated(false);
     setActiveTab('landing');
+    deleteCookie('geosentinel_auth');
+    deleteCookie('geosentinel_token');
+    localStorage.removeItem('geosentinel_auth');
+    localStorage.removeItem('geosentinel_token');
   }, []);
 
   // Compute Risk
