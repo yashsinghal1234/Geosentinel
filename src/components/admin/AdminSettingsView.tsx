@@ -5,14 +5,18 @@ import {
   Lock, 
   Sliders, 
   Check, 
-  Users 
+  Users,
+  FileText
 } from '../icons';
+import { CrackReportInfoModal } from '../citizen/CrackReportInfoModal';
+import type { CitizenCrackReport } from '../../types';
 
 export const AdminSettingsView: React.FC = () => {
   const { 
     nodes, 
     gateway, 
     assemblyPoints, 
+    reports,
     updateNodeThresholds 
   } = useGeoSentinel();
 
@@ -22,6 +26,7 @@ export const AdminSettingsView: React.FC = () => {
   const [gatewaySsid, setGatewaySsid] = useState<string>(gateway.wifiHotspotSsid);
   const [gatewayPassword, setGatewayPassword] = useState<string>('JhariaSafety#2026');
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+  const [selectedCrackReportForInfo, setSelectedCrackReportForInfo] = useState<CitizenCrackReport | null>(null);
 
   const activeNode = nodes.find(n => n.id === selectedNodeId) || nodes[0];
 
@@ -347,6 +352,100 @@ export const AdminSettingsView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Citizen Crack Reports & Field Evidence Triage Table */}
+      <div className="p-5 rounded-xl border border-white/10 bg-[#050607] space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/10">
+          <div className="flex items-center gap-2">
+            <FileText size={16} className="text-[#818cf8]" />
+            <h2 className="text-sm font-mono uppercase tracking-wider text-white">
+              Citizen Ground Fissure Registry &amp; Multi-Sensor Triage ({reports.length} Logs)
+            </h2>
+          </div>
+          <span className="text-xs font-mono text-white/50">
+            Click any row to open deep-dive telemetry, GPS coordinates, and inspector triage controls.
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs font-mono">
+            <thead className="bg-white/5 text-white/60 border-b border-white/10">
+              <tr>
+                <th className="p-3">REPORT ID</th>
+                <th className="p-3">ZONE &amp; GPS</th>
+                <th className="p-3">CITIZEN</th>
+                <th className="p-3">APERTURE</th>
+                <th className="p-3">NEAREST SENSOR</th>
+                <th className="p-3">STATUS</th>
+                <th className="p-3 text-right">ACTION</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {reports.map((r) => (
+                <tr
+                  key={r.id}
+                  onClick={() => setSelectedCrackReportForInfo(r)}
+                  className="hover:bg-white/[0.04] transition-colors cursor-pointer group"
+                >
+                  <td className="p-3 font-bold text-white group-hover:text-[#a3e635] transition-colors">
+                    <div>{r.id}</div>
+                    <div className="text-[10px] text-white/40">{r.timestamp}</div>
+                  </td>
+                  <td className="p-3 text-white/80">
+                    <div>{r.zone}</div>
+                    <div className="text-[10px] text-[#38bdf8]">{r.lat.toFixed(4)}, {r.lng.toFixed(4)}</div>
+                  </td>
+                  <td className="p-3 text-white">
+                    <div>{r.reporterName}</div>
+                    <div className="text-[10px] text-white/50">{r.phone}</div>
+                  </td>
+                  <td className="p-3">
+                    <span className={`px-2 py-0.5 rounded font-bold ${
+                      r.crackWidthEstimateMm >= 14 ? 'bg-[#2a0e0e] text-[#ef4444]' :
+                      r.crackWidthEstimateMm >= 7 ? 'bg-[#291e0a] text-[#f59e0b]' :
+                      'bg-[#0c2233] text-[#38bdf8]'
+                    }`}>
+                      {r.crackWidthEstimateMm} mm
+                    </span>
+                  </td>
+                  <td className="p-3 text-white/70">
+                    <div>{r.nearestSensorId || 'NODE-D'}</div>
+                    <div className="text-[10px] text-[#22c55e]">~{r.nearestSensorDistanceM || 145}m • {r.aiCorroborationConfidence ? `${r.aiCorroborationConfidence}% AI` : '92% AI'}</div>
+                  </td>
+                  <td className="p-3">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+                      r.status === 'Corroborated & Approved' ? 'bg-[#0c2818] text-[#22c55e] border border-[#164e29]' :
+                      r.status === 'Dismissed (Non-critical)' ? 'bg-[#1e1518] text-[#f87171] border border-[#451f26]' :
+                      'bg-[#291e0a] text-[#f59e0b] border border-[#523d13]'
+                    }`}>
+                      {r.status}
+                    </span>
+                  </td>
+                  <td className="p-3 text-right">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedCrackReportForInfo(r);
+                      }}
+                      className="px-3 py-1 rounded-lg border border-white/15 bg-white/5 hover:bg-white/15 text-[11px] text-white font-mono transition-colors cursor-pointer"
+                    >
+                      Inspect Info →
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Crack Log Info & Triage Dialog */}
+      {selectedCrackReportForInfo && (
+        <CrackReportInfoModal
+          report={selectedCrackReportForInfo}
+          onClose={() => setSelectedCrackReportForInfo(null)}
+        />
+      )}
     </div>
   );
 };

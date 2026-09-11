@@ -21,11 +21,17 @@ import {
   Menu,
   Volume2,
   VolumeX,
-  LogOut
+  LogOut,
+  Search,
+  CheckCircle2,
+  Sliders
 } from '../icons';
 import { GISHeatmap } from '../gis/GISHeatmap';
 import { MeshTopologyView } from '../topology/MeshTopologyView';
 import { GatewayEdgeView } from '../gateway/GatewayEdgeView';
+import { AdminSettingsView } from '../admin/AdminSettingsView';
+import { CrackReportInfoModal } from '../citizen/CrackReportInfoModal';
+import type { CitizenCrackReport } from '../../types';
 
 export const OperatorDashboard: React.FC = () => {
   const {
@@ -53,6 +59,11 @@ export const OperatorDashboard: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [isMineDropdownOpen, setIsMineDropdownOpen] = useState<boolean>(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState<boolean>(false);
+
+  // Crack Log Info Modal & Filters
+  const [selectedReportForInfo, setSelectedReportForInfo] = useState<CitizenCrackReport | null>(null);
+  const [crackFilter, setCrackFilter] = useState<'all' | 'pending' | 'approved' | 'dismissed'>('all');
+  const [crackSearchQuery, setCrackSearchQuery] = useState<string>('');
 
   const currentMineObj = availableMines.find((m) => m.id === selectedMine) || availableMines[0];
   const currentSectorObj = availableSectors.find((s) => s.id === selectedSector) || availableSectors[0];
@@ -221,6 +232,19 @@ export const OperatorDashboard: React.FC = () => {
             >
               <Bell size={16} className={activeNav === 'alerts' ? 'text-white' : 'text-[#828894]'} />
               {isSidebarOpen && <span>Alert Dispatch Center</span>}
+            </button>
+
+            {/* Admin & Security Settings */}
+            <button
+              onClick={() => setActiveNav('admin')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-[12px] text-[13px] font-medium transition-all cursor-pointer ${
+                activeNav === 'admin'
+                  ? 'bg-[#121418] text-white border border-[#2a2e36] shadow-sm'
+                  : 'text-[#828894] hover:text-white hover:bg-[#0c0d10]'
+              }`}
+            >
+              <Sliders size={16} className={activeNav === 'admin' ? 'text-white' : 'text-[#828894]'} />
+              {isSidebarOpen && <span>Admin &amp; Thresholds</span>}
             </button>
           </div>
         </div>
@@ -808,36 +832,249 @@ export const OperatorDashboard: React.FC = () => {
 
           {/* Sub-view: Citizen Crack Reports */}
           {activeNav === 'citizen' && (
-            <div className="space-y-4 max-w-[1400px] mx-auto">
-              <div className="flex items-center justify-between">
+            <div className="space-y-6 max-w-[1400px] mx-auto">
+              {/* Header Title Row */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-bold text-white">Citizen Crack Logs</h2>
-                  <p className="text-xs text-[#888] mt-0.5">Crowdsourced village reports verified against sensor telemetry</p>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                    Citizen Crack Logs &amp; Geotechnical Triage
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[#828894] mt-0.5">
+                    Crowdsourced village ground fissures cross-corroborated against IoT tiltmeter &amp; extensometer telemetry
+                  </p>
                 </div>
                 <button
                   onClick={() => setActiveNav('dashboard')}
-                  className="text-xs font-mono text-[#a3e635] hover:underline"
+                  className="text-xs font-mono text-[#a3e635] hover:underline self-start sm:self-auto cursor-pointer"
                 >
                   ← Back to Dashboard
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {reports.map((r) => (
-                  <div key={r.id} className="p-4 rounded-[16px] border border-[#181b20] bg-[#0a0c0f] space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-white">{r.reporterName}</span>
-                      <span className="text-[10px] font-mono text-[#a3e635] bg-[#a3e635]/10 px-2 py-0.5 rounded">
-                        {r.status}
-                      </span>
-                    </div>
-                    <p className="text-[#a1a1aa]">{r.description}</p>
-                    <div className="text-[10px] font-mono text-[#717682]">
-                      Crack width: {r.crackWidthEstimateMm}mm • {r.zone} • {r.timestamp}
-                    </div>
+              {/* 4 Summary Stat Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+                <div className="p-4 rounded-[16px] border border-[#181b20] bg-[#0a0c0f] flex items-center justify-between">
+                  <div>
+                    <div className="text-[11px] font-mono text-[#717682] uppercase">TOTAL CRACK LOGS</div>
+                    <div className="text-xl sm:text-2xl font-extrabold text-white font-mono mt-0.5">{reports.length}</div>
+                    <div className="text-[10px] text-[#555] mt-0.5">Village perimeter registry</div>
                   </div>
-                ))}
+                  <Users size={20} className="text-[#38bdf8]" />
+                </div>
+
+                <div className="p-4 rounded-[16px] border border-[#3b2a11] bg-[#140e06] flex items-center justify-between">
+                  <div>
+                    <div className="text-[11px] font-mono text-[#f59e0b] uppercase font-bold">PENDING REVIEW</div>
+                    <div className="text-xl sm:text-2xl font-extrabold text-[#f59e0b] font-mono mt-0.5">
+                      {reports.filter(r => r.status === 'Pending Review').length}
+                    </div>
+                    <div className="text-[10px] text-[#855d14] mt-0.5">Requires safety triage</div>
+                  </div>
+                  <AlertTriangle size={20} className="text-[#f59e0b]" />
+                </div>
+
+                <div className="p-4 rounded-[16px] border border-[#164e29] bg-[#08170d] flex items-center justify-between">
+                  <div>
+                    <div className="text-[11px] font-mono text-[#22c55e] uppercase font-bold">CORROBORATED</div>
+                    <div className="text-xl sm:text-2xl font-extrabold text-[#22c55e] font-mono mt-0.5">
+                      {reports.filter(r => r.status === 'Corroborated & Approved').length}
+                    </div>
+                    <div className="text-[10px] text-[#14532d] mt-0.5">Verified by sensor mesh</div>
+                  </div>
+                  <CheckCircle2 size={20} className="text-[#22c55e]" />
+                </div>
+
+                <div className="p-4 rounded-[16px] border border-[#181b20] bg-[#0a0c0f] flex items-center justify-between">
+                  <div>
+                    <div className="text-[11px] font-mono text-[#717682] uppercase">AVG CRACK APERTURE</div>
+                    <div className="text-xl sm:text-2xl font-extrabold text-white font-mono mt-0.5">
+                      {(reports.reduce((acc, r) => acc + (r.crackWidthEstimateMm || 0), 0) / (reports.length || 1)).toFixed(1)} <span className="text-xs text-[#717682]">mm</span>
+                    </div>
+                    <div className="text-[10px] text-[#555] mt-0.5">Extensometer range</div>
+                  </div>
+                  <Sparkles size={20} className="text-[#a3e635]" />
+                </div>
               </div>
+
+              {/* Search & Status Filter Controls */}
+              <div className="p-4 rounded-[18px] border border-[#181b20] bg-[#0a0c0f] flex flex-col md:flex-row items-center justify-between gap-3">
+                {/* Search Bar */}
+                <div className="relative w-full md:w-80">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#717682]" />
+                  <input
+                    type="text"
+                    value={crackSearchQuery}
+                    onChange={(e) => setCrackSearchQuery(e.target.value)}
+                    placeholder="Search by ID, citizen, zone, or notes..."
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#232731] bg-[#06080c] text-xs font-mono text-white placeholder-[#525763] focus:outline-none focus:border-[#a3e635] transition-colors"
+                  />
+                  {crackSearchQuery && (
+                    <button
+                      onClick={() => setCrackSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#717682] hover:text-white text-xs cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none">
+                  <button
+                    onClick={() => setCrackFilter('all')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-mono transition-all cursor-pointer shrink-0 ${
+                      crackFilter === 'all'
+                        ? 'bg-[#1e232e] text-white border border-[#3b4354] font-bold'
+                        : 'text-[#828894] hover:text-white hover:bg-[#121418]'
+                    }`}
+                  >
+                    All Logs ({reports.length})
+                  </button>
+
+                  <button
+                    onClick={() => setCrackFilter('pending')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-mono transition-all cursor-pointer shrink-0 ${
+                      crackFilter === 'pending'
+                        ? 'bg-[#291e0a] text-[#f59e0b] border border-[#523d13] font-bold'
+                        : 'text-[#828894] hover:text-[#f59e0b] hover:bg-[#14120a]'
+                    }`}
+                  >
+                    Pending ({reports.filter(r => r.status === 'Pending Review').length})
+                  </button>
+
+                  <button
+                    onClick={() => setCrackFilter('approved')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-mono transition-all cursor-pointer shrink-0 ${
+                      crackFilter === 'approved'
+                        ? 'bg-[#0c2818] text-[#22c55e] border border-[#164e29] font-bold'
+                        : 'text-[#828894] hover:text-[#22c55e] hover:bg-[#0c1810]'
+                    }`}
+                  >
+                    Approved ({reports.filter(r => r.status === 'Corroborated & Approved').length})
+                  </button>
+
+                  <button
+                    onClick={() => setCrackFilter('dismissed')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-mono transition-all cursor-pointer shrink-0 ${
+                      crackFilter === 'dismissed'
+                        ? 'bg-[#1e1518] text-[#f87171] border border-[#451f26] font-bold'
+                        : 'text-[#828894] hover:text-[#f87171] hover:bg-[#160f11]'
+                    }`}
+                  >
+                    Dismissed ({reports.filter(r => r.status === 'Dismissed (Non-critical)').length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Reports Grid */}
+              {(() => {
+                const filtered = reports.filter((r) => {
+                  if (crackFilter === 'pending' && r.status !== 'Pending Review') return false;
+                  if (crackFilter === 'approved' && r.status !== 'Corroborated & Approved') return false;
+                  if (crackFilter === 'dismissed' && r.status !== 'Dismissed (Non-critical)') return false;
+                  if (crackSearchQuery.trim()) {
+                    const q = crackSearchQuery.toLowerCase();
+                    return (
+                      r.reporterName.toLowerCase().includes(q) ||
+                      r.zone.toLowerCase().includes(q) ||
+                      r.description.toLowerCase().includes(q) ||
+                      r.id.toLowerCase().includes(q)
+                    );
+                  }
+                  return true;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="p-12 text-center rounded-[20px] border border-[#181b20] bg-[#0a0c0f] space-y-3">
+                      <div className="text-3xl">🔍</div>
+                      <h3 className="text-base font-bold text-white">No Crack Logs Found</h3>
+                      <p className="text-xs text-[#828894] max-w-sm mx-auto">
+                        No report matches the search keyword "{crackSearchQuery}" and filter status "{crackFilter}".
+                      </p>
+                      <button
+                        onClick={() => { setCrackSearchQuery(''); setCrackFilter('all'); }}
+                        className="px-4 py-1.5 rounded-full bg-[#181d26] text-xs font-mono text-[#a3e635] hover:bg-[#222938] transition-colors cursor-pointer"
+                      >
+                        Reset Filters
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filtered.map((r) => (
+                      <div
+                        key={r.id}
+                        onClick={() => setSelectedReportForInfo(r)}
+                        className="group relative p-4 rounded-[18px] border border-[#181b20] bg-[#0a0c0f] hover:border-[#384052] hover:bg-[#0e1117] transition-all duration-200 flex flex-col justify-between space-y-3 cursor-pointer shadow-sm hover:shadow-xl"
+                      >
+                        {/* Top ID & Status Row */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-white text-sm group-hover:text-[#a3e635] transition-colors">
+                              {r.id}
+                            </span>
+                            <span className="text-[10px] font-mono text-[#717682]">{r.timestamp}</span>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold border ${
+                            r.status === 'Corroborated & Approved'
+                              ? 'bg-[#0c2818] text-[#22c55e] border-[#164e29]'
+                              : r.status === 'Dismissed (Non-critical)'
+                              ? 'bg-[#1e1518] text-[#f87171] border-[#451f26]'
+                              : 'bg-[#291e0a] text-[#f59e0b] border-[#523d13]'
+                          }`}>
+                            {r.status}
+                          </span>
+                        </div>
+
+                        {/* Thumbnail Viewport with Overlay Badge */}
+                        <div className="relative h-36 rounded-[12px] overflow-hidden bg-[#050608] border border-[#16181d]">
+                          <img
+                            src={r.photoUrl}
+                            alt={r.id}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/80 backdrop-blur-sm border border-white/10 text-[10px] font-mono text-white">
+                            Aperture: <strong className="text-[#f59e0b]">{r.crackWidthEstimateMm} mm</strong>
+                          </div>
+                          <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/80 backdrop-blur-sm border border-white/10 text-[9px] font-mono text-[#38bdf8]">
+                            AI Corroborated: {r.aiCorroborationConfidence ? `${r.aiCorroborationConfidence}%` : '92.4%'}
+                          </div>
+                        </div>
+
+                        {/* Description & Citizen Info */}
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] font-mono text-[#38bdf8] flex items-center gap-1 truncate">
+                            <MapPin size={11} className="shrink-0" />
+                            <span className="truncate">{r.zone}</span>
+                          </div>
+                          <p className="text-[12px] text-[#cbd5e1] line-clamp-2 leading-relaxed">
+                            {r.description}
+                          </p>
+                          <div className="text-[10px] font-mono text-[#717682] flex items-center justify-between pt-1 border-t border-[#161922]">
+                            <span>Citizen: <strong className="text-white font-normal">{r.reporterName}</strong></span>
+                            <span>{r.phone}</span>
+                          </div>
+                        </div>
+
+                        {/* Open Info CTA Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedReportForInfo(r);
+                          }}
+                          className="w-full py-2 px-3 rounded-xl border border-[#232836] bg-[#12151d] hover:bg-[#1d2332] group-hover:border-[#a3e635]/40 text-xs font-mono text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer mt-1"
+                        >
+                          <Sparkles size={12} className="text-[#a3e635]" />
+                          <span>Inspect Info &amp; Triage Details →</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -879,8 +1116,40 @@ export const OperatorDashboard: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Sub-view: Admin Settings & Threshold Governance */}
+          {activeNav === 'admin' && (
+            <div className="space-y-4 max-w-[1400px] mx-auto">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-white">System Security &amp; Calibration</h2>
+                  <p className="text-xs text-[#888] mt-0.5">Per-node threshold calibration, authentication keys, and assembly shelters</p>
+                </div>
+                <button
+                  onClick={() => setActiveNav('dashboard')}
+                  className="text-xs font-mono text-[#a3e635] hover:underline"
+                >
+                  ← Back to Dashboard
+                </button>
+              </div>
+              <AdminSettingsView />
+            </div>
+          )}
         </main>
       </div>
+
+      {/* Global Crack Log Detailed Info & Geotechnical Triage Modal */}
+      {selectedReportForInfo && (
+        <CrackReportInfoModal
+          report={selectedReportForInfo}
+          onClose={() => setSelectedReportForInfo(null)}
+          onLocateOnGis={() => {
+            setSelectedReportForInfo(null);
+            setActiveNav('gis');
+          }}
+        />
+      )}
     </div>
   );
 };
+
