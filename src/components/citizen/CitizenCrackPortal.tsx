@@ -6,7 +6,6 @@ import {
   CheckCircle, 
   Lock
 } from '../icons';
-import confetti from 'canvas-confetti';
 
 export const CitizenCrackPortal: React.FC = () => {
   const { 
@@ -62,13 +61,6 @@ export const CitizenCrackPortal: React.FC = () => {
       crackWidthEstimateMm: crackWidth,
       photoUrl: samplePhotos[selectedPhotoIndex].url,
       description: description.trim() || 'Observed rapid crack dilation over the past 12 hours.',
-    });
-
-    confetti({
-      particleCount: 70,
-      spread: 60,
-      origin: { y: 0.6 },
-      colors: ['#9984d8', '#3fcb7f', '#ffffff'],
     });
 
     setSubmittedSuccess(true);

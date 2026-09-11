@@ -12,7 +12,6 @@ import {
   Lock,
   X
 } from '../icons';
-import confetti from 'canvas-confetti';
 
 export const PublicSafetyView: React.FC = () => {
   const { 
@@ -45,13 +44,6 @@ export const PublicSafetyView: React.FC = () => {
       status: 'Safe at High Ground Shelter',
       locationNote: locationNote.trim() || 'Checked in via Public Notice Board Link',
       phone: residentPhone.trim() || 'N/A',
-    });
-
-    confetti({
-      particleCount: 80,
-      spread: 60,
-      origin: { y: 0.7 },
-      colors: ['#3fcb7f', '#ffffff', '#9984d8'],
     });
 
     setHasCheckedIn(true);
