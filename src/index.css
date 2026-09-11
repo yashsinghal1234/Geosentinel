@@ -78,7 +78,7 @@
 
 /* Custom Leaflet Black Theme Tiles & Popups (Zero API Key & Zero Watermark) */
 .leaflet-container {
-  background: #000000 !important;
+  background: #121419 !important;
   font-family: var(--font-inter) !important;
   outline: none;
 }
@@ -87,21 +87,21 @@
 .leaflet-pane,
 .leaflet-layer,
 .leaflet-tile-container {
-  background: #000000 !important;
+  background: #121419 !important;
 }
 
 .leaflet-tile-dark {
-  filter: invert(100%) hue-rotate(180deg) brightness(58%) contrast(145%) grayscale(60%) !important;
-  background: #000000 !important;
+  filter: invert(96%) hue-rotate(190deg) brightness(82%) contrast(125%) grayscale(40%) !important;
+  background: #14171d !important;
 }
 
 .leaflet-tile-satellite {
-  filter: brightness(85%) contrast(110%);
+  filter: brightness(88%) contrast(110%);
 }
 
 .leaflet-tile-street-dark {
-  filter: invert(100%) hue-rotate(180deg) brightness(72%) contrast(135%) saturate(20%) !important;
-  background: #000000 !important;
+  filter: invert(96%) hue-rotate(190deg) brightness(88%) contrast(120%) saturate(30%) !important;
+  background: #14171d !important;
 }
 
 .custom-leaflet-popup .leaflet-popup-content-wrapper {

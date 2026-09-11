@@ -186,14 +186,14 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     // A. RENDER SMOOTH LAYERED RISK HEATMAP PLUMES (Weather-Radar Multi-Stop Gradient)
     if (showHeatmap) {
       // Hotspot 1: Sector 4 Village Slope & Highwall (Epicenter)
-      const primaryRadius = 260;
+      const primaryRadius = 280;
       
       // Outer Gradient Ring (Low / Advisory Zone: Emerald to Lime)
       L.circle([23.7482, 86.4195], {
         radius: primaryRadius,
         stroke: false,
         fillColor: '#84cc16',
-        fillOpacity: 0.14,
+        fillOpacity: 0.22,
         className: 'pointer-events-none',
       }).addTo(group);
 
@@ -202,7 +202,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
         radius: primaryRadius * 0.65,
         stroke: false,
         fillColor: '#f97316',
-        fillOpacity: 0.24,
+        fillOpacity: 0.38,
         className: 'pointer-events-none',
       }).addTo(group);
 
@@ -210,21 +210,21 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
       L.circle([23.7482, 86.4195], {
         radius: primaryRadius * 0.35,
         stroke: true,
-        color: '#ef4444',
-        weight: 1,
+        color: '#ff4d4d',
+        weight: 2,
         dashArray: '4, 4',
         fillColor: '#ef4444',
-        fillOpacity: 0.40,
+        fillOpacity: 0.60,
         className: 'pointer-events-none',
       }).addTo(group);
 
       // Hotspot 2: Sector 3 Abandoned Gallery / Extensometer Zone
-      const secondaryRadius = 190;
+      const secondaryRadius = 200;
       L.circle([23.7450, 86.4150], {
         radius: secondaryRadius,
         stroke: false,
         fillColor: '#eab308',
-        fillOpacity: 0.16,
+        fillOpacity: 0.25,
         className: 'pointer-events-none',
       }).addTo(group);
 
@@ -232,12 +232,12 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
         radius: secondaryRadius * 0.45,
         stroke: false,
         fillColor: '#f97316',
-        fillOpacity: 0.32,
+        fillOpacity: 0.48,
         className: 'pointer-events-none',
       }).addTo(group);
     }
 
-    // B. RENDER UNDERGROUND ABANDONED GALLERY (Muted Slate Hatched Void Polygon)
+    // B. RENDER UNDERGROUND ABANDONED GALLERY (Cyan Highlighted Void Polygon)
     if (showMineWorkings) {
       const galleryCoords: [number, number][] = [
         [23.7440, 86.4140],
@@ -247,11 +247,11 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
       ];
 
       L.polygon(galleryCoords, {
-        color: '#64748b',
-        weight: 1.5,
+        color: '#38bdf8',
+        weight: 2,
         dashArray: '6, 6',
-        fillColor: '#334155',
-        fillOpacity: 0.12,
+        fillColor: '#0284c7',
+        fillOpacity: 0.20,
       }).addTo(group);
 
       // Clean Solid Background Chip for Gallery Label (No Text Collision!)
@@ -259,26 +259,26 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
         className: 'custom-chip-icon',
         html: `
           <div style="
-            background: #0c0e12;
-            border: 1px solid #2d3748;
+            background: #0c1524;
+            border: 1.5px solid #0284c7;
             border-radius: 6px;
-            padding: 3px 7px;
+            padding: 3px 8px;
             font-family: monospace;
-            font-size: 10px;
-            font-weight: 600;
-            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 700;
+            color: #38bdf8;
             white-space: nowrap;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.9);
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
           ">
-            <span style="width: 6px; height: 6px; border-radius: 50%; background: #94a3b8;"></span>
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 6px #38bdf8;"></span>
             <span>UNSTABLE GALLERY (45M VOID)</span>
           </div>
         `,
-        iconSize: [190, 24],
-        iconAnchor: [95, 12],
+        iconSize: [200, 26],
+        iconAnchor: [100, 13],
       });
 
       L.marker([23.7450, 86.4175], { icon: galleryLabelIcon, interactive: false }).addTo(group);
@@ -293,37 +293,37 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
         const crackIcon = L.divIcon({
           className: 'custom-crack-pin',
           html: `
-            <div style="position: relative; display: flex; align-items: center; gap: 6px;">
+            <div style="position: relative; display: flex; align-items: center; gap: 7px;">
               <!-- Pin Dot with Pulse -->
               <div style="
-                width: 12px;
-                height: 12px;
+                width: 14px;
+                height: 14px;
                 border-radius: 50%;
                 background: ${pinColor};
                 border: 2px solid #ffffff;
-                box-shadow: 0 0 10px ${pinColor};
+                box-shadow: 0 0 14px ${pinColor}, 0 0 4px #ffffff;
                 flex-shrink: 0;
               "></div>
               
               <!-- Solid Background Chip (Prevents Text Collision) -->
               <div style="
-                background: #090a0d;
-                border: 1px solid ${isCorroborated ? 'rgba(239, 68, 68, 0.5)' : 'rgba(245, 158, 11, 0.5)'};
+                background: #11141c;
+                border: 1.5px solid ${isCorroborated ? '#ef4444' : '#f59e0b'};
                 border-radius: 6px;
-                padding: 2px 6px;
+                padding: 3px 7px;
                 font-family: monospace;
-                font-size: 10px;
+                font-size: 11px;
                 font-weight: 700;
                 color: #ffffff;
                 white-space: nowrap;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.9);
+                box-shadow: 0 3px 10px rgba(0,0,0,0.95);
               ">
                 <span style="color: ${pinColor};">⚠️ Crack:</span> ${rep.crackWidthEstimateMm}mm
               </div>
             </div>
           `,
-          iconSize: [120, 24],
-          iconAnchor: [6, 12],
+          iconSize: [130, 26],
+          iconAnchor: [7, 13],
         });
 
         const marker = L.marker([rep.lat, rep.lng], { icon: crackIcon }).addTo(group);
@@ -346,26 +346,26 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
           className: 'custom-shelter-pin',
           html: `
             <div style="
-              background: #061c11;
-              border: 1px solid rgba(34, 197, 94, 0.6);
+              background: #042614;
+              border: 1.5px solid #22c55e;
               border-radius: 6px;
-              padding: 3px 8px;
+              padding: 4px 9px;
               font-family: monospace;
-              font-size: 10px;
+              font-size: 11px;
               font-weight: 700;
               color: #4ade80;
               display: inline-flex;
               align-items: center;
               gap: 5px;
               white-space: nowrap;
-              box-shadow: 0 4px 12px rgba(0,0,0,0.85);
+              box-shadow: 0 4px 14px rgba(34, 197, 94, 0.45);
             ">
-              <span style="font-size: 12px;">⌂</span>
+              <span style="font-size: 13px;">⌂</span>
               <span>${ap.name.split(' ')[0]} Shelter</span>
             </div>
           `,
-          iconSize: [130, 24],
-          iconAnchor: [65, 12],
+          iconSize: [140, 26],
+          iconAnchor: [70, 13],
         });
 
         const marker = L.marker([ap.lat, ap.lng], { icon: shelterIcon }).addTo(group);
@@ -392,60 +392,61 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
         const nodeIcon = L.divIcon({
           className: 'custom-node-pin',
           html: `
-            <div style="position: relative; display: flex; align-items: center; gap: 7px; cursor: pointer;">
+            <div style="position: relative; display: flex; align-items: center; gap: 8px; cursor: pointer;">
               <!-- Node Beacon Dot -->
-              <div style="position: relative; width: 14px; height: 14px; flex-shrink: 0;">
+              <div style="position: relative; width: 16px; height: 16px; flex-shrink: 0;">
                 ${isPulsing ? `
                   <div style="
                     position: absolute;
-                    inset: -4px;
+                    inset: -5px;
                     border-radius: 50%;
                     background: ${statusColor};
-                    opacity: 0.4;
-                    animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+                    opacity: 0.65;
+                    animation: ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;
                   "></div>
                 ` : ''}
                 <div style="
                   position: relative;
-                  width: 14px;
-                  height: 14px;
+                  width: 16px;
+                  height: 16px;
                   border-radius: 50%;
                   background: ${statusColor};
                   border: 2px solid #ffffff;
-                  box-shadow: 0 0 10px ${statusColor};
+                  box-shadow: 0 0 16px ${statusColor}, 0 0 5px #ffffff;
                 "></div>
               </div>
 
               <!-- Solid Chip Label (Guarantees zero text collision) -->
               <div style="
-                background: #0c0e12;
-                border: 1px solid ${statusColor};
+                background: #0f1218;
+                border: 1.5px solid ${statusColor};
                 border-radius: 6px;
-                padding: 2px 7px;
+                padding: 3px 8px;
                 font-family: monospace;
-                font-size: 10px;
+                font-size: 11px;
                 font-weight: 700;
                 color: #ffffff;
                 white-space: nowrap;
-                box-shadow: 0 4px 14px rgba(0,0,0,0.9);
+                box-shadow: 0 4px 16px rgba(0,0,0,0.95);
                 display: flex;
                 align-items: center;
-                gap: 5px;
+                gap: 6px;
               ">
-                <span>${node.code}</span>
+                <span style="color: #ffffff; font-weight: 800;">${node.code}</span>
                 <span style="
-                  font-size: 8px;
-                  padding: 1px 3px;
+                  font-size: 9px;
+                  padding: 1.5px 4px;
                   border-radius: 3px;
-                  background: ${trueStatus === 'critical' ? 'rgba(239, 68, 68, 0.25)' : trueStatus === 'warning' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(34, 197, 94, 0.25)'};
+                  background: ${trueStatus === 'critical' ? 'rgba(239, 68, 68, 0.4)' : trueStatus === 'warning' ? 'rgba(245, 158, 11, 0.4)' : 'rgba(34, 197, 94, 0.35)'};
                   color: ${statusColor};
                   text-transform: uppercase;
+                  font-weight: 800;
                 ">${trueStatus}</span>
               </div>
             </div>
           `,
-          iconSize: [140, 26],
-          iconAnchor: [7, 13],
+          iconSize: [150, 28],
+          iconAnchor: [8, 14],
         });
 
         const marker = L.marker([node.lat, node.lng], { icon: nodeIcon }).addTo(group);
