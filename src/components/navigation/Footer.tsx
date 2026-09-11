@@ -49,7 +49,7 @@ export const Footer: React.FC = () => {
           <div className="space-y-5">
             <h4 className="text-white font-medium text-[15px]">Documentation</h4>
             <ul className="space-y-3.5">
-              <li><a href="#" className="hover:text-white transition-colors block">Get Started</a></li>
+              <li><a href="#" className="hover:text-white transition-colors block">Village Safety Board</a></li>
               <li><a href="#" className="hover:text-white transition-colors block">Node Schema</a></li>
               <li><a href="#" className="hover:text-white transition-colors block">Access Telemetry</a></li>
               <li><a href="#" className="hover:text-white transition-colors block">Deployments</a></li>

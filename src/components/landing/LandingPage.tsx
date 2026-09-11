@@ -45,7 +45,7 @@ export const LandingPage: React.FC = () => {
             onClick={() => setActiveTab('public')}
             className="flex items-center gap-2 rounded-full bg-white px-6 py-3 text-[14px] font-semibold text-black hover:bg-white/90 transition-all cursor-pointer shadow-md hover:scale-[1.02] active:scale-[0.98]"
           >
-            <span>Get Started · Village Board</span>
+            <span>Village Safety Board</span>
             <ArrowRight size={14} />
           </button>
 

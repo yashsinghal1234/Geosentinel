@@ -58,7 +58,7 @@ export const TopNav: React.FC = () => {
             }`}
           >
             <span className="h-2 w-2 rounded-full bg-[#a3e635] animate-ping" />
-            <span>Get Started</span>
+            <span>Village Safety Board</span>
           </button>
 
           {/* 2. Citizen Crack & Fissure Portal */}
@@ -188,7 +188,7 @@ export const TopNav: React.FC = () => {
             activeTab === 'public' ? 'bg-white/15 text-white font-bold' : 'text-[#808080]'
           }`}
         >
-          Get Started
+          Village Safety
         </button>
         <button
           onClick={() => setActiveTab('citizen')}
