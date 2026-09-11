@@ -43,7 +43,38 @@ export const calculateNodeStatus = (node: SensorNode): 'critical' | 'warning' | 
 };
 
 export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
-  const { nodes, reports, assemblyPoints, rainfallRate } = useGeoSentinel();
+  const { 
+    nodes, 
+    filteredNodes,
+    reports, 
+    assemblyPoints, 
+    rainfallRate,
+    selectedMine,
+    selectedSector,
+    availableMines,
+    availableSectors
+  } = useGeoSentinel();
+
+  // Active nodes based on sector filter or default full fleet
+  const activeNodes = filteredNodes && filteredNodes.length > 0 ? filteredNodes : nodes;
+
+  const currentMine = useMemo(() => {
+    return availableMines.find(m => m.id === selectedMine) || availableMines[0];
+  }, [availableMines, selectedMine]);
+
+  const currentSector = useMemo(() => {
+    return availableSectors.find(s => s.id === selectedSector) || availableSectors[0];
+  }, [availableSectors, selectedSector]);
+
+  // Dynamic Centroid of active nodes
+  const mapCenter = useMemo<[number, number]>(() => {
+    if (activeNodes.length > 0) {
+      const avgLat = activeNodes.reduce((acc, n) => acc + n.lat, 0) / activeNodes.length;
+      const avgLng = activeNodes.reduce((acc, n) => acc + n.lng, 0) / activeNodes.length;
+      return [avgLat, avgLng];
+    }
+    return [23.7482, 86.4195];
+  }, [activeNodes]);
 
   // Layer Toggles: 'dark' (Tactical Dark Theme), 'satellite' (Esri High-Res Satellite)
   const [basemapType, setBasemapType] = useState<'dark' | 'satellite'>('dark');
@@ -57,9 +88,6 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const overlayGroupRef = useRef<L.LayerGroup | null>(null);
-
-  // Center Coordinates: Jharia Coalfield Sector 4 / Open Pit
-  const mapCenter = useMemo<[number, number]>(() => [23.7482, 86.4195], []);
 
   const getTileConfig = (type: 'dark' | 'satellite') => {
     switch (type) {
@@ -84,7 +112,6 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
         };
     }
   };
-
 
   // 1. Initialize Leaflet Map
   useEffect(() => {
@@ -118,10 +145,10 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
 
     mapInstanceRef.current = map;
 
-    // Trigger invalidateSize and fitBounds reliably across rendering frames
+    // Initial fit to nodes
     const t1 = setTimeout(() => {
       map.invalidateSize();
-      const nodeCoords = nodes.map(n => [n.lat, n.lng] as [number, number]);
+      const nodeCoords = activeNodes.map(n => [n.lat, n.lng] as [number, number]);
       if (nodeCoords.length > 0) {
         const bounds = L.latLngBounds(nodeCoords);
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
@@ -146,7 +173,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     };
   }, []);
 
-  // 2. Switch Basemap (Pitch-Black Dark vs Satellite vs Street Dark)
+  // 2. Switch Basemap (Dark vs Satellite)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -166,7 +193,19 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     tileLayerRef.current = newTiles;
   }, [basemapType]);
 
-  // 3. Render All Map Layers & Data (Heatmap Plumes, Status Nodes, Chips, Polygons)
+  // 3. Smooth Auto-Fit when Mine or Sector changes
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || activeNodes.length === 0) return;
+
+    const coords = activeNodes.map(n => [n.lat, n.lng] as [number, number]);
+    if (coords.length > 0) {
+      const bounds = L.latLngBounds(coords);
+      map.flyToBounds(bounds, { padding: [55, 55], maxZoom: 16, duration: 0.75 });
+    }
+  }, [selectedMine, selectedSector, activeNodes.length]);
+
+  // 4. Render All Map Layers & Data (Heatmap Plumes, Status Nodes, Chips, Polygons)
   useEffect(() => {
     const map = mapInstanceRef.current;
     const group = overlayGroupRef.current;
@@ -174,62 +213,108 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
 
     group.clearLayers();
 
-    // A. RENDER SMOOTH LAYERED RISK HEATMAP PLUMES (Weather-Radar Multi-Stop Gradient)
+    // A. DYNAMICALLY GENERATED RISK HEATMAP PLUMES (Driven 100% by live sensor readings)
     if (showHeatmap) {
-      // Hotspot 1: Sector 4 Village Slope & Highwall (Epicenter)
-      const primaryRadius = 280;
-      
-      // Outer Gradient Ring (Low / Advisory Zone: Emerald to Lime)
-      L.circle([23.7482, 86.4195], {
-        radius: primaryRadius,
-        stroke: false,
-        fillColor: '#84cc16',
-        fillOpacity: 0.22,
-        className: 'pointer-events-none',
-      }).addTo(group);
+      const riskNodes = activeNodes.filter((node) => {
+        const status = calculateNodeStatus(node);
+        const { readings, thresholds } = node;
+        const tiltRatio = readings.tiltDeg / (thresholds.tiltWarningDeg || 3.5);
+        const vibRatio = readings.vibrationMmS / (thresholds.vibrationWarningMmS || 5.0);
+        const crackRatio = readings.crackWidthMm / (thresholds.crackWarningMm || 8.0);
+        const gasRatio = readings.gasPpm / (thresholds.gasWarningPpm || 50.0);
+        return status !== 'online' || Math.max(tiltRatio, vibRatio, crackRatio, gasRatio) >= 0.5;
+      });
 
-      // Mid Gradient Ring (Warning Zone: Amber to Orange)
-      L.circle([23.7482, 86.4195], {
-        radius: primaryRadius * 0.65,
-        stroke: false,
-        fillColor: '#f97316',
-        fillOpacity: 0.38,
-        className: 'pointer-events-none',
-      }).addTo(group);
+      if (riskNodes.length > 0) {
+        riskNodes.forEach((node) => {
+          const status = calculateNodeStatus(node);
+          const { readings, thresholds } = node;
+          const tiltRatio = readings.tiltDeg / (thresholds.tiltCriticalDeg || 6.0);
+          const vibRatio = readings.vibrationMmS / (thresholds.vibrationCriticalMmS || 12.0);
+          const crackRatio = readings.crackWidthMm / (thresholds.crackCriticalMm || 18.0);
+          const gasRatio = readings.gasPpm / (thresholds.gasCriticalPpm || 120.0);
+          const maxRatio = Math.max(tiltRatio, vibRatio, crackRatio, gasRatio);
 
-      // Core Gradient Ring (Critical / Shear Epicenter: Deep Crimson Red)
-      L.circle([23.7482, 86.4195], {
-        radius: primaryRadius * 0.35,
-        stroke: true,
-        color: '#ff4d4d',
-        weight: 2,
-        dashArray: '4, 4',
-        fillColor: '#ef4444',
-        fillOpacity: 0.60,
-        className: 'pointer-events-none',
-      }).addTo(group);
+          const rainMultiplier = 1 + Math.min(rainfallRate, 60) / 120; // Expanded by rainfall surge
 
-      // Hotspot 2: Sector 3 Abandoned Gallery / Extensometer Zone
-      const secondaryRadius = 200;
-      L.circle([23.7450, 86.4150], {
-        radius: secondaryRadius,
-        stroke: false,
-        fillColor: '#eab308',
-        fillOpacity: 0.25,
-        className: 'pointer-events-none',
-      }).addTo(group);
+          if (status === 'critical' || maxRatio >= 0.85) {
+            const plumeRadius = Math.min(360, (180 + maxRatio * 120) * rainMultiplier);
+            
+            // Outer Low / Advisory Ring (Emerald to Lime)
+            L.circle([node.lat, node.lng], {
+              radius: plumeRadius,
+              stroke: false,
+              fillColor: '#84cc16',
+              fillOpacity: 0.22,
+              className: 'pointer-events-none',
+            }).addTo(group);
 
-      L.circle([23.7450, 86.4150], {
-        radius: secondaryRadius * 0.45,
-        stroke: false,
-        fillColor: '#f97316',
-        fillOpacity: 0.48,
-        className: 'pointer-events-none',
-      }).addTo(group);
+            // Mid Warning Ring (Amber to Orange)
+            L.circle([node.lat, node.lng], {
+              radius: plumeRadius * 0.65,
+              stroke: false,
+              fillColor: '#f97316',
+              fillOpacity: 0.38,
+              className: 'pointer-events-none',
+            }).addTo(group);
+
+            // Core Crimson Eye (Critical Shear Epicenter)
+            L.circle([node.lat, node.lng], {
+              radius: plumeRadius * 0.35,
+              stroke: true,
+              color: '#ff4d4d',
+              weight: 2,
+              dashArray: '4, 4',
+              fillColor: '#ef4444',
+              fillOpacity: 0.62,
+              className: 'pointer-events-none',
+            }).addTo(group);
+          } else {
+            // Warning Plume
+            const plumeRadius = Math.min(260, (130 + maxRatio * 90) * rainMultiplier);
+
+            // Outer Advisory Ring
+            L.circle([node.lat, node.lng], {
+              radius: plumeRadius,
+              stroke: false,
+              fillColor: '#eab308',
+              fillOpacity: 0.24,
+              className: 'pointer-events-none',
+            }).addTo(group);
+
+            // Inner Warning Ring
+            L.circle([node.lat, node.lng], {
+              radius: plumeRadius * 0.48,
+              stroke: false,
+              fillColor: '#f97316',
+              fillOpacity: 0.48,
+              className: 'pointer-events-none',
+            }).addTo(group);
+          }
+        });
+      } else if (activeNodes.length > 0) {
+        // Normal Baseline Ring around Cluster Centroid
+        L.circle(mapCenter, {
+          radius: 200,
+          stroke: true,
+          color: '#22c55e',
+          weight: 1.5,
+          dashArray: '4, 6',
+          fillColor: '#10b981',
+          fillOpacity: 0.12,
+          className: 'pointer-events-none',
+        }).addTo(group);
+      }
     }
 
-    // B. RENDER UNDERGROUND ABANDONED GALLERY (Cyan Highlighted Void Polygon)
+    // B. RENDER UNDERGROUND ABANDONED GALLERY (Cyan Highlighted Void Polygon with Live Gas telemetry)
     if (showMineWorkings) {
+      const galleryNodes = activeNodes.filter(
+        n => (n.depthMeters && n.depthMeters > 0) || n.zone.toLowerCase().includes('gallery') || n.id === 'SN-03' || n.id === 'SN-04'
+      );
+      const gasNode = galleryNodes.find(n => n.readings.gasPpm > 15) || galleryNodes[0];
+      const liveGasPpm = gasNode ? gasNode.readings.gasPpm : 28;
+
       const galleryCoords: [number, number][] = [
         [23.7440, 86.4140],
         [23.7480, 86.4180],
@@ -245,7 +330,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
         fillOpacity: 0.20,
       }).addTo(group);
 
-      // Clean Solid Background Chip for Gallery Label (No Text Collision!)
+      // Clean Solid Background Chip for Gallery Label with dynamic sensor gas reading
       const galleryLabelIcon = L.divIcon({
         className: 'custom-chip-icon',
         html: `
@@ -265,11 +350,11 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
             gap: 5px;
           ">
             <span style="width: 7px; height: 7px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 6px #38bdf8;"></span>
-            <span>UNSTABLE GALLERY (45M VOID)</span>
+            <span>UNSTABLE GALLERY (45M VOID • CH4: ${liveGasPpm} PPM)</span>
           </div>
         `,
-        iconSize: [200, 26],
-        iconAnchor: [100, 13],
+        iconSize: [230, 26],
+        iconAnchor: [115, 13],
       });
 
       L.marker([23.7450, 86.4175], { icon: galleryLabelIcon, interactive: false }).addTo(group);
@@ -372,7 +457,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
 
     // E. RENDER LORA SENSOR NODES WITH TRUE STATUS COLORS & SOLID CHIPS
     if (showNodes) {
-      nodes.forEach((node) => {
+      activeNodes.forEach((node) => {
         const trueStatus = calculateNodeStatus(node);
         const statusColor = trueStatus === 'critical' ? '#ef4444' :
                             trueStatus === 'warning' ? '#f59e0b' :
@@ -468,7 +553,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
       });
     }
 
-  }, [nodes, reports, assemblyPoints, rainfallRate, showHeatmap, showNodes, showMineWorkings, showCrackPins, showShelters]);
+  }, [activeNodes, reports, assemblyPoints, rainfallRate, showHeatmap, showNodes, showMineWorkings, showCrackPins, showShelters, mapCenter]);
 
   return (
     <div className="space-y-4 select-none">
@@ -493,7 +578,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
               onChange={(e) => setShowNodes(e.target.checked)}
               className="accent-[#a3e635] w-3.5 h-3.5 rounded"
             />
-            <span className={showNodes ? 'text-white font-medium' : ''}>Status Nodes ({nodes.length})</span>
+            <span className={showNodes ? 'text-white font-medium' : ''}>Status Nodes ({activeNodes.length})</span>
           </label>
 
           <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
@@ -573,15 +658,16 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
           </div>
         </div>
 
-        {/* Top-Left Coordinate Pill Overlay */}
+        {/* Top-Left Dynamic Coordinate Pill Overlay */}
         <div className="absolute top-4 left-4 z-20 flex items-center gap-2 pointer-events-auto">
           <div className="px-3.5 py-1.5 rounded-full bg-[#000000]/90 border border-[#23272f] backdrop-blur-md text-[11px] font-mono text-[#a3e635] flex items-center gap-1.5 shadow-lg">
             <MapPin size={12} />
-            <span>Jharia Coalfield • 23.7482°N, 86.4195°E</span>
+            <span>
+              {currentMine?.name || 'Jharia Coalfield'} • {currentSector?.shortName || 'All Sectors'} ({mapCenter[0].toFixed(4)}°N, {mapCenter[1].toFixed(4)}°E)
+            </span>
           </div>
         </div>
       </div>
     </div>
   );
 };
-
