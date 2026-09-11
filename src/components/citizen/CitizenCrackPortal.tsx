@@ -4,16 +4,14 @@ import type { CitizenCrackReport } from '../../types';
 import { 
   Camera, 
   CheckCircle2, 
-  Lock,
-  MapPin,
-  Search,
-  Upload,
-  X,
-  Activity,
-  Sparkles,
-  ShieldCheck,
-  AlertTriangle,
-  Layers
+  MapPin, 
+  Search, 
+  Upload, 
+  X, 
+  Activity, 
+  Sparkles, 
+  ShieldCheck, 
+  AlertTriangle 
 } from '../icons';
 
 // High-Resolution Built-in Geological Fracture Reference Patterns (Never 404)
@@ -49,7 +47,6 @@ export const CitizenCrackPortal: React.FC = () => {
     reports, 
     submitCrackReport, 
     reviewCrackReport, 
-    setActiveTab,
     isAuthenticated,
     setIsLoginModalOpen
   } = useGeoSentinel();
@@ -201,51 +198,21 @@ export const CitizenCrackPortal: React.FC = () => {
     <div className="mx-auto max-w-[1360px] px-4 py-8 sm:px-6 lg:px-8 space-y-7 animate-fadeIn font-sans select-none text-white pb-16">
       
       {/* 1. TOP HEADER BANNER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-6">
-        <div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="p-2 rounded-xl bg-[#a855f7]/15 border border-[#a855f7]/30 text-[#d8b4fe]">
-              <Camera size={20} />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white font-sans">
-              Citizen Ground Crack Reporting Portal
-            </h1>
-            <span className="text-[11px] font-mono text-[#22c55e] bg-[#22c55e]/15 border border-[#22c55e]/30 px-3 py-0.5 rounded-full font-semibold">
-              PUBLIC ACCESS • ZERO LOGIN REQUIRED
-            </span>
+      <div className="border-b border-white/[0.08] pb-6">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="p-2 rounded-xl bg-[#a855f7]/15 border border-[#a855f7]/30 text-[#d8b4fe]">
+            <Camera size={20} />
           </div>
-          <p className="text-xs sm:text-sm text-white/50 mt-1.5 max-w-3xl">
-            Upload geotagged observations of ground fissures, shear cracks, and subsidence. Automatic AI correlation with deployed IoT extensometer arrays and real-time operator dispatch.
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-white font-sans">
+            Citizen Ground Crack Reporting Portal
+          </h1>
+          <span className="text-[11px] font-mono text-[#22c55e] bg-[#22c55e]/15 border border-[#22c55e]/30 px-3 py-0.5 rounded-full font-semibold">
+            PUBLIC ACCESS • ZERO LOGIN REQUIRED
+          </span>
         </div>
-
-        {/* Top Actions */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <button
-            onClick={() => setActiveTab('public')}
-            className="px-4 py-2 rounded-xl bg-[#111318] border border-white/10 hover:border-white/20 text-xs font-medium text-white/80 hover:text-white transition-all cursor-pointer flex items-center gap-1.5"
-          >
-            <Layers size={14} className="text-[#38bdf8]" />
-            <span>Village Safety Board</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('landing')}
-            className="px-3.5 py-2 rounded-xl text-xs font-medium text-white/60 hover:text-white transition-colors cursor-pointer"
-          >
-            Home
-          </button>
-
-          {!isAuthenticated && (
-            <button
-              onClick={() => setIsLoginModalOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-medium text-white/90 bg-[#161a23] hover:bg-[#1e2330] border border-white/10 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
-            >
-              <Lock size={13} className="text-[#fbbf24]" />
-              <span>Operator Login</span>
-            </button>
-          )}
-        </div>
+        <p className="text-xs sm:text-sm text-white/50 mt-1.5 max-w-3xl">
+          Upload geotagged observations of ground fissures, shear cracks, and subsidence. Automatic AI correlation with deployed IoT extensometer arrays and real-time operator dispatch.
+        </p>
       </div>
 
       {/* 2. TOP 4 SUMMARY METRIC CARDS */}
