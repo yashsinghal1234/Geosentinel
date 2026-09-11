@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useGeoSentinel } from '../../context/GeoSentinelContext';
+import type { GatewayDevice } from '../../types';
 import { Radio } from '../icons';
 
 interface TopologyNodePos {
@@ -8,30 +9,192 @@ interface TopologyNodePos {
   code: string;
   x: number;
   y: number;
-  type: string;
-  isGateway?: boolean;
+  sector: number;
+  isMaster?: boolean;
 }
 
-export const MeshTopologyView: React.FC = () => {
-  const { nodes, gateway, links } = useGeoSentinel();
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [disabledNodeIds, setDisabledNodeIds] = useState<string[]>([]);
-  const [protocolFilter, setProtocolFilter] = useState<'all' | 'LoRa 868MHz' | 'ESP-NOW 2.4GHz'>('all');
+// Master Gateway Hubs (Raspberry Pi 4) matching hardware architecture
+const SECTOR_MASTERS: GatewayDevice[] = [
+  {
+    id: 'MASTER-S1',
+    name: 'Sector-1 Master (Raspberry Pi 4)',
+    code: 'RPI4-SEC1-HUB',
+    hardwareModel: 'Raspberry Pi 4 Model B',
+    sectorNum: 1,
+    lat: 23.7520,
+    lng: 86.4220,
+    ip: '192.168.1.1',
+    mac: 'DC:A6:32:4E:91:A1',
+    status: 'online',
+    internetConnected: true,
+    batteryPct: 99,
+    wifiHotspotSsid: 'GEOSENTINEL_SEC1_MASTER',
+    localSirenActive: false,
+    gsmSignalBars: 5,
+    gsmStatus: 'online',
+    loraStatus: 'connected',
+    edgeAiStatus: 'inferencing',
+    edgeAiInferenceFps: 14.6,
+    solarMpptWatts: 120,
+    selfHealingActive: true,
+    storeAndForwardBufferCount: 0,
+    lastSyncTime: 'Live',
+    firmwareVersion: 'v4.2.0-rpi-edge-ai',
+    cpuTempC: 41.5,
+    ramUsagePct: 28,
+  },
+  {
+    id: 'MASTER-S2',
+    name: 'Sector-2 Master (Raspberry Pi 4)',
+    code: 'RPI4-SEC2-HUB',
+    hardwareModel: 'Raspberry Pi 4 Model B',
+    sectorNum: 2,
+    lat: 23.7468,
+    lng: 86.4180,
+    ip: '192.168.2.1',
+    mac: 'DC:A6:32:4E:91:B2',
+    status: 'online',
+    internetConnected: true,
+    batteryPct: 98,
+    wifiHotspotSsid: 'GEOSENTINEL_SEC2_MASTER',
+    localSirenActive: false,
+    gsmSignalBars: 5,
+    gsmStatus: 'online',
+    loraStatus: 'connected',
+    edgeAiStatus: 'inferencing',
+    edgeAiInferenceFps: 14.8,
+    solarMpptWatts: 120,
+    selfHealingActive: true,
+    storeAndForwardBufferCount: 0,
+    lastSyncTime: 'Live',
+    firmwareVersion: 'v4.2.0-rpi-edge-ai',
+    cpuTempC: 42.1,
+    ramUsagePct: 31,
+  },
+];
 
-  // SVG Coordinates layout for 8 sensors + 2 mesh repeaters + 1 gateway
-  const nodePositions: Record<string, { x: number; y: number }> = {
-    'GW-01': { x: 500, y: 120 }, // Central Base Gateway
-    'MR-01': { x: 300, y: 240 }, // North Mesh Repeater
-    'MR-02': { x: 700, y: 240 }, // South Mesh Repeater
-    'SN-01': { x: 420, y: 250 }, // Sector 4 Ridge (Hop 1 direct to GW)
-    'SN-05': { x: 500, y: 300 }, // Village School (Hop 1 direct ESP-NOW)
-    'SN-08': { x: 580, y: 250 }, // Optical Rain Gauge (Hop 1 direct ESP-NOW)
-    'SN-02': { x: 220, y: 360 }, // North Overburden (Hop 2 via MR-01)
-    'SN-06': { x: 340, y: 370 }, // Open Cast Crest (Hop 2 via MR-01)
-    'SN-07': { x: 180, y: 460 }, // Riverbed Embankment (Hop 3 via SN-02)
-    'SN-03': { x: 680, y: 360 }, // Abandoned Gallery (Hop 2 via MR-02)
-    'SN-04': { x: 780, y: 460 }, // Pillar Seam Gas (Hop 3 via SN-03)
+export const MeshTopologyView: React.FC = () => {
+  const { nodes } = useGeoSentinel();
+  const [selectedNodeId, setSelectedNodeId] = useState<string>('MASTER-S1');
+  const [disabledNodeIds, setDisabledNodeIds] = useState<string[]>([]);
+  const [protocolFilter, setProtocolFilter] = useState<'all' | 'wifi' | 'lora'>('all');
+
+  // Node spatial SVG layout tailored to Sector 1 & Sector 2 clusters
+  const defaultPositions: Record<string, { x: number; y: number }> = {
+    // Sector 1 Hub & ESP32-S3 Pods
+    'MASTER-S1': { x: 270, y: 105 },
+    'NODE-A': { x: 160, y: 225 },
+    'NODE-B': { x: 370, y: 225 },
+    'NODE-C': { x: 110, y: 375 },
+    'NODE-D': { x: 260, y: 385 },
+
+    // Sector 2 Hub & ESP32-S3 Pods
+    'MASTER-S2': { x: 730, y: 105 },
+    'NODE-X': { x: 630, y: 225 },
+    'NODE-Y': { x: 840, y: 225 },
+    'NODE-Z': { x: 670, y: 385 },
+    'NODE-W': { x: 890, y: 375 },
   };
+
+  // Build full topology node list
+  const allNodesList = useMemo<TopologyNodePos[]>(() => {
+    const list: TopologyNodePos[] = [
+      {
+        id: 'MASTER-S1',
+        name: 'Sector-1 Master Hub',
+        code: 'RPI4-SEC1-HUB',
+        x: defaultPositions['MASTER-S1'].x,
+        y: defaultPositions['MASTER-S1'].y,
+        sector: 1,
+        isMaster: true,
+      },
+      {
+        id: 'MASTER-S2',
+        name: 'Sector-2 Master Hub',
+        code: 'RPI4-SEC2-HUB',
+        x: defaultPositions['MASTER-S2'].x,
+        y: defaultPositions['MASTER-S2'].y,
+        sector: 2,
+        isMaster: true,
+      },
+    ];
+
+    nodes.forEach((n, idx) => {
+      const pos = defaultPositions[n.id] || {
+        x: n.sector === 2 ? 650 + (idx % 3) * 90 : 180 + (idx % 3) * 90,
+        y: 240 + Math.floor(idx / 3) * 120,
+      };
+      list.push({
+        id: n.id,
+        name: n.name,
+        code: n.code,
+        x: pos.x,
+        y: pos.y,
+        sector: n.sector || (n.id.startsWith('NODE-X') || n.id.startsWith('NODE-Y') ? 2 : 1),
+        isMaster: false,
+      });
+    });
+
+    return list;
+  }, [nodes]);
+
+  // Dynamic mesh routing links
+  const activeLinks = useMemo(() => {
+    const links: Array<{
+      id: string;
+      sourceId: string;
+      targetId: string;
+      rssiDbm: number;
+      protocol: 'wifi' | 'lora';
+      label: string;
+      isFailover?: boolean;
+    }> = [];
+
+    // 1. Inter-Master LoRa Bridge (868MHz)
+    links.push({
+      id: 'L-MASTERS',
+      sourceId: 'MASTER-S1',
+      targetId: 'MASTER-S2',
+      rssiDbm: -79,
+      protocol: 'lora',
+      label: 'LoRa 868MHz Bridge (ACK Sync)',
+    });
+
+    // 2. Multi-Hop Pod Mesh Links
+    nodes.forEach((node) => {
+      let targetId = node.parentNodeId || (node.sector === 2 ? 'MASTER-S2' : 'MASTER-S1');
+      let isFailover = false;
+
+      // Failover rerouting simulation
+      if (disabledNodeIds.includes(targetId)) {
+        if (targetId === 'MASTER-S1') {
+          targetId = 'MASTER-S2';
+          isFailover = true;
+        } else if (targetId === 'MASTER-S2') {
+          targetId = 'MASTER-S1';
+          isFailover = true;
+        } else if (targetId === 'NODE-A') {
+          targetId = 'NODE-B';
+          isFailover = true;
+        } else if (targetId === 'NODE-X') {
+          targetId = 'NODE-Y';
+          isFailover = true;
+        }
+      }
+
+      links.push({
+        id: `link-${node.id}-${targetId}`,
+        sourceId: node.id,
+        targetId: targetId,
+        rssiDbm: node.readings?.rssiDbm ?? -70,
+        protocol: isFailover && targetId.startsWith('MASTER') ? 'lora' : 'wifi',
+        label: isFailover ? 'FAILOVER REROUTED' : 'WiFi Mesh 2.4GHz',
+        isFailover,
+      });
+    });
+
+    return links;
+  }, [nodes, disabledNodeIds]);
 
   const toggleNodeFailure = (id: string) => {
     setDisabledNodeIds(prev => 
@@ -39,81 +202,91 @@ export const MeshTopologyView: React.FC = () => {
     );
   };
 
-  const allNodesList: TopologyNodePos[] = [
-    { id: 'GW-01', name: gateway.name, code: gateway.code, x: nodePositions['GW-01'].x, y: nodePositions['GW-01'].y, type: 'gateway', isGateway: true },
-    { id: 'MR-01', name: 'North Ridge Solar Repeater', code: 'REP-N-01', x: nodePositions['MR-01'].x, y: nodePositions['MR-01'].y, type: 'repeater' },
-    { id: 'MR-02', name: 'South Slope Solar Repeater', code: 'REP-S-02', x: nodePositions['MR-02'].x, y: nodePositions['MR-02'].y, type: 'repeater' },
-    ...nodes.map(n => ({
-      id: n.id,
-      name: n.name,
-      code: n.code,
-      x: nodePositions[n.id]?.x || 500,
-      y: nodePositions[n.id]?.y || 300,
-      type: n.type,
-      isGateway: false
-    }))
-  ];
-
+  const selectedMaster = SECTOR_MASTERS.find(m => m.id === selectedNodeId);
   const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-16">
-      {/* Header Banner */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 p-5 rounded-xl border border-white/10 bg-[#050607]">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium border border-white/15 bg-white/5 text-[#818cf8]">
-              <Radio size={12} className="animate-pulse" />
-              LORA 868MHZ + ESP-NOW 2.4GHZ HYBRID PROTOCOL
-            </span>
-            <span className="text-xs font-mono text-white/40">AIR-GAP SELF-HEALING TOPOLOGY</span>
+    <div className="space-y-4 font-mono select-none">
+      {/* Top Filter & Network Stats Strip */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-[16px] border border-[#181b20] bg-[#0a0c0f] text-xs">
+        {/* Left: Health & Sync Pills */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[#8b949e]">
+          <div className="flex items-center gap-1.5 text-white">
+            <Radio size={14} className="text-[#a3e635] animate-pulse" />
+            <span className="font-bold">Dual-Tier Mesh:</span>
+            <span className="text-[#38bdf8]">WiFi 2.4GHz (Pods)</span>
+            <span>+</span>
+            <span className="text-[#c084fc]">LoRa 868MHz (RPi Masters)</span>
           </div>
-          <h1 className="font-serif text-2xl md:text-3xl text-white tracking-tight">
-            Mesh Network &amp; Gateway Routing Visualizer
-          </h1>
+          <div className="hidden md:flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#22c55e]"></span>
+            <span>PDR: <strong className="text-white">99.8%</strong></span>
+          </div>
+          <div className="hidden md:flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#38bdf8]"></span>
+            <span>Avg Hop: <strong className="text-white">1.4 Hops</strong></span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center p-1 rounded-lg border border-white/10 bg-white/5 text-xs font-mono">
-            <button
-              onClick={() => setProtocolFilter('all')}
-              className={`px-3 py-1 rounded-md transition-colors ${protocolFilter === 'all' ? 'bg-white text-black font-semibold' : 'text-white/60 hover:text-white'}`}
-            >
-              All Links ({links.length})
-            </button>
-            <button
-              onClick={() => setProtocolFilter('LoRa 868MHz')}
-              className={`px-3 py-1 rounded-md transition-colors ${protocolFilter === 'LoRa 868MHz' ? 'bg-[#818cf8] text-white font-semibold' : 'text-white/60 hover:text-white'}`}
-            >
-              LoRa 868MHz
-            </button>
-            <button
-              onClick={() => setProtocolFilter('ESP-NOW 2.4GHz')}
-              className={`px-3 py-1 rounded-md transition-colors ${protocolFilter === 'ESP-NOW 2.4GHz' ? 'bg-[#22c55e] text-black font-semibold' : 'text-white/60 hover:text-white'}`}
-            >
-              ESP-NOW 2.4GHz
-            </button>
-          </div>
+        {/* Right: Protocol Filter Buttons */}
+        <div className="flex items-center gap-1.5 p-1 rounded-lg border border-[#232731] bg-[#121418]">
+          <button
+            onClick={() => setProtocolFilter('all')}
+            className={`px-2.5 py-1 rounded text-[11px] transition-colors cursor-pointer ${
+              protocolFilter === 'all' ? 'bg-[#22262f] text-[#a3e635] font-bold' : 'text-[#717682] hover:text-white'
+            }`}
+          >
+            All Links ({activeLinks.length})
+          </button>
+          <button
+            onClick={() => setProtocolFilter('wifi')}
+            className={`px-2.5 py-1 rounded text-[11px] transition-colors cursor-pointer ${
+              protocolFilter === 'wifi' ? 'bg-[#22262f] text-[#38bdf8] font-bold' : 'text-[#717682] hover:text-white'
+            }`}
+          >
+            WiFi Mesh
+          </button>
+          <button
+            onClick={() => setProtocolFilter('lora')}
+            className={`px-2.5 py-1 rounded text-[11px] transition-colors cursor-pointer ${
+              protocolFilter === 'lora' ? 'bg-[#22262f] text-[#c084fc] font-bold' : 'text-[#717682] hover:text-white'
+            }`}
+          >
+            LoRa Bridge
+          </button>
         </div>
       </div>
 
-      {/* Main Grid: SVG Topology Map & Inspector Pane */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* SVG Graph View */}
-        <div className="lg:col-span-8 p-5 rounded-xl border border-white/10 bg-[#050607] flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3 text-xs font-mono text-white/50">
-            <span className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e]" /> Online Node
-              <span className="w-2.5 h-2.5 rounded-full bg-[#eab308] ml-2" /> Warning
-              <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444] ml-2 animate-ping" /> Critical Breached
-              <span className="w-2.5 h-2.5 rounded-full bg-white/20 ml-2" /> Simulated Dead
-            </span>
-            <span className="text-[11px] text-white/40">
-              Click any node to inspect telemetry or simulate failover
+      {/* Main Grid: Interactive SVG Graph + Telemetry Inspector */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Left: SVG Topology Canvas */}
+        <div className="lg:col-span-8 p-4 rounded-[18px] border border-[#181b20] bg-[#000000] shadow-2xl flex flex-col justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3 text-[11px] text-[#8b949e]">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded bg-[#6b21a8] border border-[#e9d5ff] flex items-center justify-center text-[8px] text-white">⚡</span>
+                <span className="text-[#d8b4fe]">RPi 4 Master</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e]"></span>
+                <span className="text-white">ESP32-S3 Pod</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444] animate-pulse"></span>
+                <span className="text-white">Critical Node</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#475569]"></span>
+                <span className="text-[#64748b]">Simulated Dead</span>
+              </span>
+            </div>
+            <span className="text-[10px] text-[#555]">
+              Click any node to inspect telemetry or test failover
             </span>
           </div>
 
-          <div className="relative w-full aspect-[16/10] bg-black/60 rounded-xl border border-white/5 overflow-hidden flex items-center justify-center">
+          {/* SVG Map */}
+          <div className="relative w-full aspect-[16/10] bg-[#06080c] rounded-[14px] border border-[#161a22] overflow-hidden flex items-center justify-center">
             {/* Background Grid Accent */}
             <div 
               className="absolute inset-0 opacity-15 pointer-events-none"
@@ -123,77 +296,85 @@ export const MeshTopologyView: React.FC = () => {
               }}
             />
 
-            <svg viewBox="0 0 1000 560" className="w-full h-full">
+            {/* Sector Cluster Labels */}
+            <div className="absolute top-3 left-6 text-[11px] font-bold text-[#38bdf8]/60 uppercase tracking-wider">
+              ◰ Sector 1 Mesh Cluster (North Ridge)
+            </div>
+            <div className="absolute top-3 right-6 text-[11px] font-bold text-[#c084fc]/60 uppercase tracking-wider">
+              ◰ Sector 2 Mesh Cluster (East Highwall)
+            </div>
+
+            <svg viewBox="0 0 1000 500" className="w-full h-full">
               <defs>
-                {/* LoRa Packet Glow */}
-                <filter id="glow-lora" x="-20%" y="-20%" width="140%" height="140%">
+                <filter id="glow-wifi" x="-20%" y="-20%" width="140%" height="140%">
                   <feGaussianBlur stdDeviation="3" result="blur" />
                   <feComposite in="SourceGraphic" in2="blur" operator="over" />
                 </filter>
-                <filter id="glow-critical" x="-30%" y="-30%" width="160%" height="160%">
-                  <feGaussianBlur stdDeviation="5" result="blur" />
+                <filter id="glow-lora-purple" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="4" result="blur" />
                   <feComposite in="SourceGraphic" in2="blur" operator="over" />
                 </filter>
               </defs>
 
-              {/* Links Between Nodes */}
-              {links.map((link) => {
-                const src = nodePositions[link.sourceId];
-                const tgt = nodePositions[link.targetId];
+              {/* Draw Mesh Links */}
+              {activeLinks.map((link) => {
+                const src = defaultPositions[link.sourceId];
+                const tgt = defaultPositions[link.targetId];
                 if (!src || !tgt) return null;
 
                 const isSrcDisabled = disabledNodeIds.includes(link.sourceId);
                 const isTgtDisabled = disabledNodeIds.includes(link.targetId);
                 const isLinkActive = !isSrcDisabled && !isTgtDisabled;
 
-                if (protocolFilter !== 'all' && link.protocol !== protocolFilter) {
-                  return null;
-                }
+                if (protocolFilter === 'wifi' && link.protocol !== 'wifi') return null;
+                if (protocolFilter === 'lora' && link.protocol !== 'lora') return null;
 
-                const strokeColor = !isLinkActive ? '#333333' :
-                  link.protocol === 'LoRa 868MHz' ? '#818cf8' : '#22c55e';
+                const strokeColor = !isLinkActive ? '#262d3d' :
+                  link.isFailover ? '#f59e0b' :
+                  link.protocol === 'lora' ? '#c084fc' : '#38bdf8';
 
                 return (
                   <g key={link.id}>
-                    {/* Link Line */}
+                    {/* Background track */}
                     <line
                       x1={src.x}
                       y1={src.y}
                       x2={tgt.x}
                       y2={tgt.y}
                       stroke={strokeColor}
-                      strokeWidth={isLinkActive ? '2' : '1'}
-                      strokeDasharray={!isLinkActive ? '4,4' : link.protocol === 'ESP-NOW 2.4GHz' ? '6,3' : undefined}
-                      strokeOpacity={isLinkActive ? 0.6 : 0.2}
+                      strokeWidth={link.protocol === 'lora' ? '2.5' : '1.8'}
+                      strokeDasharray={!isLinkActive ? '4,4' : link.protocol === 'lora' ? '6,6' : link.isFailover ? '5,5' : undefined}
+                      strokeOpacity={isLinkActive ? 0.75 : 0.25}
                     />
 
-                    {/* Animated Telemetry Signal Pulse along active links */}
+                    {/* Dynamic Moving Particle along active link */}
                     {isLinkActive && (
-                      <circle r="3" fill={strokeColor} filter="url(#glow-lora)">
+                      <circle r={link.protocol === 'lora' ? '4' : '3'} fill={strokeColor} filter={link.protocol === 'lora' ? 'url(#glow-lora-purple)' : 'url(#glow-wifi)'}>
                         <animateMotion
                           path={`M ${src.x} ${src.y} L ${tgt.x} ${tgt.y}`}
-                          dur={`${2.5 + Math.random() * 1.5}s`}
+                          dur={`${link.protocol === 'lora' ? 2.2 : 1.6}s`}
                           repeatCount="indefinite"
                         />
                       </circle>
                     )}
 
-                    {/* Midpoint Signal Strength Meter */}
+                    {/* Link Label Meter */}
                     <text
                       x={(src.x + tgt.x) / 2}
-                      y={(src.y + tgt.y) / 2 - 6}
-                      fill={isLinkActive ? 'rgba(255,255,255,0.4)' : '#555555'}
+                      y={(src.y + tgt.y) / 2 - 8}
+                      fill={isLinkActive ? (link.isFailover ? '#f59e0b' : 'rgba(255,255,255,0.6)') : '#475569'}
                       fontSize="9"
                       fontFamily="monospace"
                       textAnchor="middle"
+                      fontWeight="bold"
                     >
-                      {isLinkActive ? `${link.rssiDbm} dBm` : 'BROKEN'}
+                      {isLinkActive ? `${link.rssiDbm} dBm` : 'DISCONNECTED'}
                     </text>
                   </g>
                 );
               })}
 
-              {/* Node Circles */}
+              {/* Draw Nodes & Master Hubs */}
               {allNodesList.map((node) => {
                 const liveNode = nodes.find(n => n.id === node.id);
                 const isDisabled = disabledNodeIds.includes(node.id);
@@ -203,32 +384,29 @@ export const MeshTopologyView: React.FC = () => {
                 let strokeColor = '#22c55e';
                 let isCritical = false;
 
-                if (node.isGateway) {
-                  fillColor = gateway.internetConnected ? '#ffffff' : '#eab308';
-                  strokeColor = '#ffffff';
-                } else if (node.type === 'repeater') {
-                  fillColor = '#818cf8';
-                  strokeColor = '#818cf8';
+                if (node.isMaster) {
+                  fillColor = '#a855f7';
+                  strokeColor = '#e9d5ff';
                 } else if (liveNode) {
                   if (liveNode.status === 'critical') {
                     fillColor = '#ef4444';
                     strokeColor = '#ef4444';
                     isCritical = true;
                   } else if (liveNode.status === 'warning') {
-                    fillColor = '#eab308';
-                    strokeColor = '#eab308';
+                    fillColor = '#f59e0b';
+                    strokeColor = '#f59e0b';
                   }
                 }
 
                 if (isDisabled) {
-                  fillColor = '#222222';
-                  strokeColor = '#444444';
+                  fillColor = '#1f293d';
+                  strokeColor = '#475569';
                 }
 
                 return (
                   <g 
                     key={node.id} 
-                    className="cursor-pointer transition-transform hover:scale-110"
+                    className="cursor-pointer transition-all hover:scale-110"
                     onClick={() => setSelectedNodeId(node.id)}
                   >
                     {/* Pulsing ring for critical nodes */}
@@ -236,11 +414,11 @@ export const MeshTopologyView: React.FC = () => {
                       <circle
                         cx={node.x}
                         cy={node.y}
-                        r="24"
+                        r="26"
                         fill="none"
                         stroke="#ef4444"
                         strokeWidth="2"
-                        className="animate-ping origin-center"
+                        className="animate-ping"
                         style={{ transformOrigin: `${node.x}px ${node.y}px` }}
                       />
                     )}
@@ -250,36 +428,63 @@ export const MeshTopologyView: React.FC = () => {
                       <circle
                         cx={node.x}
                         cy={node.y}
-                        r="22"
+                        r={node.isMaster ? '26' : '22'}
                         fill="none"
-                        stroke="#818cf8"
+                        stroke={node.isMaster ? '#c084fc' : '#a3e635'}
+                        strokeWidth="2.5"
+                        strokeDasharray="4,3"
+                      />
+                    )}
+
+                    {/* Master Square vs Pod Circle */}
+                    {node.isMaster ? (
+                      <rect
+                        x={node.x - 16}
+                        y={node.y - 16}
+                        width="32"
+                        height="32"
+                        rx="8"
+                        fill="#0d0914"
+                        stroke={strokeColor}
+                        strokeWidth="2.5"
+                      />
+                    ) : (
+                      <circle
+                        cx={node.x}
+                        cy={node.y}
+                        r={14}
+                        fill="#090c10"
+                        stroke={strokeColor}
                         strokeWidth="2.5"
                       />
                     )}
 
-                    {/* Main Node Disc */}
-                    <circle
-                      cx={node.x}
-                      cy={node.y}
-                      r={node.isGateway ? 18 : 14}
-                      fill="#050607"
-                      stroke={strokeColor}
-                      strokeWidth="2.5"
-                    />
+                    {/* Inner Indicator Pip / Icon */}
+                    {node.isMaster ? (
+                      <text
+                        x={node.x}
+                        y={node.y + 4}
+                        fill={isDisabled ? '#64748b' : '#ffffff'}
+                        fontSize="12"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        ⚡
+                      </text>
+                    ) : (
+                      <circle
+                        cx={node.x}
+                        cy={node.y}
+                        r={5}
+                        fill={fillColor}
+                      />
+                    )}
 
-                    {/* Inner Pip */}
-                    <circle
-                      cx={node.x}
-                      cy={node.y}
-                      r={node.isGateway ? 8 : 5}
-                      fill={fillColor}
-                    />
-
-                    {/* Node Code Label */}
+                    {/* Node ID Badge Label */}
                     <text
                       x={node.x}
-                      y={node.y + (node.isGateway ? 32 : 26)}
-                      fill={isDisabled ? '#555555' : '#ffffff'}
+                      y={node.y + (node.isMaster ? 32 : 28)}
+                      fill={isDisabled ? '#64748b' : '#ffffff'}
                       fontSize="11"
                       fontWeight="bold"
                       fontFamily="monospace"
@@ -293,126 +498,179 @@ export const MeshTopologyView: React.FC = () => {
             </svg>
           </div>
 
-          <div className="flex items-center justify-between text-xs font-mono text-white/50 pt-3 border-t border-white/5">
-            <span>Mesh Packet Delivery Rate: <strong className="text-[#22c55e]">99.8%</strong></span>
-            <span>Avg RSSI: <strong className="text-white">-78 dBm</strong></span>
-            <span>Self-Healing Relay: <strong className="text-[#818cf8]">Active</strong></span>
+          {/* Bottom Diagnostics Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#8b949e] pt-3 border-t border-[#181b20]">
+            <span>Self-Healing LoRa Mesh: <strong className="text-[#a3e635]">Armed &amp; Dynamic</strong></span>
+            <span>Active Sector Hubs: <strong className="text-white">2 / 2 Online</strong></span>
+            <span>Mesh Packet Loss: <strong className="text-[#22c55e]">0.02%</strong></span>
           </div>
         </div>
 
-        {/* Selected Node / Mesh Inspector Panel */}
-        <div className="lg:col-span-4 p-5 rounded-xl border border-white/10 bg-[#050607] flex flex-col justify-between">
+        {/* Right: Selected Node / Hub Telemetry Inspector */}
+        <div className="lg:col-span-4 p-4 rounded-[18px] border border-[#181b20] bg-[#0a0c0f] shadow-2xl flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
-              <span className="text-xs font-mono uppercase tracking-wider text-white/50">
-                Node / Link Telemetry Inspector
+            {/* Inspector Header */}
+            <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-[#1f242e]">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#8b949e]">
+                Mesh Node Inspector
               </span>
-              <span className="text-xs font-mono text-white/80">
-                {selectedNodeId || 'GW-01'}
+              <span className="text-xs px-2 py-0.5 rounded bg-[#161a22] text-[#38bdf8] font-bold border border-[#232731]">
+                {selectedNodeId}
               </span>
             </div>
 
-            {selectedNodeId === 'GW-01' || !selectedNodeId ? (
-              <div className="space-y-4">
-                <div className="p-3 rounded-lg border border-white/10 bg-white/5">
-                  <span className="text-[10px] font-mono text-white/40 block">ROOT MESH SINK</span>
-                  <div className="text-base font-serif font-bold text-white mt-0.5">{gateway.name}</div>
-                  <div className="text-xs font-mono text-white/60 mt-1">{gateway.code} | {gateway.ip}</div>
+            {/* Inspecting Master Gateway Hub */}
+            {selectedMaster ? (
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl border border-[#a855f7]/40 bg-[#120a1f]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-[#c084fc] font-bold uppercase">Raspberry Pi 4 Master Hub</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#22c55e]/20 text-[#4ade80] font-bold border border-[#22c55e]/40">
+                      ● EDGE ONLINE
+                    </span>
+                  </div>
+                  <div className="text-sm font-bold text-white mt-1">{selectedMaster.name}</div>
+                  <div className="text-[11px] text-[#94a3b8] mt-0.5">
+                    IP: {selectedMaster.ip} • MAC: {selectedMaster.mac}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-                  <div className="p-2.5 rounded-lg border border-white/5 bg-white/[0.02]">
-                    <span className="text-[10px] text-white/40 block">Store-and-Forward</span>
-                    <span className="text-white font-semibold">{gateway.storeAndForwardBufferCount} packets buffered</span>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#12161f]">
+                    <span className="text-[10px] text-[#718096] block uppercase">Edge AI Model</span>
+                    <span className="text-[#38bdf8] font-bold text-[11px]">TFLite Strata-Net</span>
+                    <span className="text-[9px] text-[#94a3b8] block">{selectedMaster.edgeAiInferenceFps} FPS</span>
                   </div>
-                  <div className="p-2.5 rounded-lg border border-white/5 bg-white/[0.02]">
-                    <span className="text-[10px] text-white/40 block">Captive SSID</span>
-                    <span className="text-white font-semibold">{gateway.wifiHotspotSsid}</span>
+
+                  <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#12161f]">
+                    <span className="text-[10px] text-[#718096] block uppercase">GSM Cellular</span>
+                    <span className="text-[#4ade80] font-bold text-[11px]">SIM7600 Direct</span>
+                    <span className="text-[9px] text-[#94a3b8] block">5/5 Bars • SMS Armed</span>
                   </div>
-                  <div className="p-2.5 rounded-lg border border-white/5 bg-white/[0.02]">
-                    <span className="text-[10px] text-white/40 block">Edge CPU Temp</span>
-                    <span className="text-white font-semibold">{gateway.cpuTempC}°C</span>
+
+                  <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#12161f]">
+                    <span className="text-[10px] text-[#718096] block uppercase">Solar MPPT</span>
+                    <span className="text-[#fbbf24] font-bold text-[11px]">{selectedMaster.solarMpptWatts}W Array</span>
+                    <span className="text-[9px] text-[#94a3b8] block">Battery {selectedMaster.batteryPct}%</span>
                   </div>
-                  <div className="p-2.5 rounded-lg border border-white/5 bg-white/[0.02]">
-                    <span className="text-[10px] text-white/40 block">Firmware</span>
-                    <span className="text-white font-semibold">{gateway.firmwareVersion}</span>
+
+                  <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#12161f]">
+                    <span className="text-[10px] text-[#718096] block uppercase">System Load</span>
+                    <span className="text-white font-bold text-[11px]">{selectedMaster.cpuTempC}°C CPU</span>
+                    <span className="text-[9px] text-[#94a3b8] block">RAM {selectedMaster.ramUsagePct}%</span>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#12161f] text-[11px] text-[#94a3b8] space-y-1">
+                  <div className="flex justify-between">
+                    <span>LoRa SX1278 Bridge:</span>
+                    <span className="text-[#c084fc] font-bold">Synchronized</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Hotspot Captive SSID:</span>
+                    <span className="text-white">{selectedMaster.wifiHotspotSsid}</span>
                   </div>
                 </div>
               </div>
             ) : selectedNode ? (
-              <div className="space-y-4">
-                <div className="p-3 rounded-lg border border-white/10 bg-white/5">
+              /* Inspecting ESP32-S3 Multi-Sensor Pod */
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl border border-[#1e2430] bg-[#12161f]">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-white/40 uppercase">{selectedNode.type}</span>
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
-                      selectedNode.status === 'critical' ? 'bg-[#ef4444]/20 text-[#ef4444] font-bold' :
-                      selectedNode.status === 'warning' ? 'bg-[#eab308]/20 text-[#eab308]' : 'bg-[#22c55e]/20 text-[#22c55e]'
+                    <span className="text-[10px] text-[#38bdf8] font-bold uppercase">ESP32-S3 Multi-Sensor Pod</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                      selectedNode.status === 'critical' ? 'bg-[#ef4444]/20 text-[#ef4444] border-[#ef4444]/40' :
+                      selectedNode.status === 'warning' ? 'bg-[#f59e0b]/20 text-[#f59e0b] border-[#f59e0b]/40' :
+                      'bg-[#22c55e]/20 text-[#22c55e] border-[#22c55e]/40'
                     }`}>
-                      {selectedNode.status.toUpperCase()}
+                      ● {selectedNode.status.toUpperCase()}
                     </span>
                   </div>
-                  <div className="text-base font-serif font-bold text-white mt-1">{selectedNode.name}</div>
-                  <div className="text-xs font-mono text-white/60 mt-0.5">{selectedNode.zone}</div>
+                  <div className="text-sm font-bold text-white mt-1">{selectedNode.name}</div>
+                  <div className="text-[11px] text-[#94a3b8] mt-0.5">{selectedNode.zone}</div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-                  <div className="p-2.5 rounded-lg border border-white/5 bg-white/[0.02]">
-                    <span className="text-[10px] text-white/40 block">Tilt Slope</span>
-                    <span className="text-white font-semibold">{selectedNode.readings?.tiltDeg ?? 0}°</span>
+                {/* 2-Column Sensor Telemetry Tiles */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#0c1017]">
+                    <span className="text-[10px] text-[#718096] block uppercase">BNO085 Tilt</span>
+                    <span className={`text-sm font-extrabold ${
+                      (selectedNode.readings?.tiltDeg ?? 0) >= 5 ? 'text-[#ef4444]' : 'text-white'
+                    }`}>
+                      {(selectedNode.readings?.tiltDeg ?? 0).toFixed(2)}°
+                    </span>
                   </div>
-                  <div className="p-2.5 rounded-lg border border-white/5 bg-white/[0.02]">
-                    <span className="text-[10px] text-white/40 block">Crack Width</span>
-                    <span className="text-white font-semibold">{selectedNode.readings?.crackWidthMm ?? 0} mm</span>
+
+                  <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#0c1017]">
+                    <span className="text-[10px] text-[#718096] block uppercase">BNO085 Vib</span>
+                    <span className="text-sm font-extrabold text-white">
+                      {(selectedNode.readings?.vibrationMmS ?? 0).toFixed(1)} <span className="text-[9px] text-[#94a3b8] font-normal">mm/s</span>
+                    </span>
                   </div>
-                  <div className="p-2.5 rounded-lg border border-white/5 bg-white/[0.02]">
-                    <span className="text-[10px] text-white/40 block">Vibration PPV</span>
-                    <span className="text-white font-semibold">{selectedNode.readings?.vibrationMmS ?? 0} mm/s</span>
+
+                  <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#0c1017]">
+                    <span className="text-[10px] text-[#718096] block uppercase">Soil Saturation</span>
+                    <span className={`text-sm font-extrabold ${
+                      (selectedNode.readings?.soilMoisturePct ?? 50) >= 75 ? 'text-[#ef4444]' : 'text-[#4ade80]'
+                    }`}>
+                      {(selectedNode.readings?.soilMoisturePct ?? 50).toFixed(0)}%
+                    </span>
                   </div>
-                  <div className="p-2.5 rounded-lg border border-white/5 bg-white/[0.02]">
-                    <span className="text-[10px] text-white/40 block">Battery Level</span>
-                    <span className="text-[#22c55e] font-semibold">{selectedNode.readings?.batteryPct ?? 100}%</span>
+
+                  <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#0c1017]">
+                    <span className="text-[10px] text-[#718096] block uppercase">BME280 Temp</span>
+                    <span className="text-sm font-extrabold text-white">
+                      {(selectedNode.readings?.tempC ?? 27.5).toFixed(1)}°C
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#0c1017]">
+                    <span className="text-[10px] text-[#718096] block uppercase">Battery</span>
+                    <span className="text-sm font-extrabold text-[#22c55e]">
+                      {selectedNode.readings?.batteryPct ?? 95}%
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#0c1017]">
+                    <span className="text-[10px] text-[#718096] block uppercase">WiFi/LoRa RSSI</span>
+                    <span className="text-sm font-extrabold text-[#38bdf8]">
+                      {selectedNode.readings?.rssiDbm ?? -70} <span className="text-[9px] text-[#94a3b8] font-normal">dBm</span>
+                    </span>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-lg border border-white/5 bg-white/[0.02] text-xs font-mono space-y-1">
-                  <div className="flex justify-between text-white/60">
-                    <span>Mesh Routing Hop:</span>
-                    <span className="text-white">Hop {selectedNode.meshHopCount} via {selectedNode.parentNodeId || 'Root'}</span>
+                {/* Mesh Routing Hop Info */}
+                <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#0c1017] text-[11px] text-[#94a3b8] space-y-1">
+                  <div className="flex justify-between">
+                    <span>Mesh Uplink Target:</span>
+                    <span className="text-white font-bold">{selectedNode.parentNodeId || (selectedNode.sector === 2 ? 'MASTER-S2' : 'MASTER-S1')}</span>
                   </div>
-                  <div className="flex justify-between text-white/60">
-                    <span>Signal Strength:</span>
-                    <span className="text-white">{selectedNode.readings?.rssiDbm ?? -70} dBm</span>
-                  </div>
-                  <div className="flex justify-between text-white/60">
-                    <span>Last Heartbeat:</span>
-                    <span className="text-[#22c55e]">3.2s ago</span>
+                  <div className="flex justify-between">
+                    <span>Hop Count:</span>
+                    <span className="text-[#a3e635] font-bold">Hop {selectedNode.meshHopCount || 1}</span>
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="p-4 text-center text-xs font-mono text-white/50">
-                Mesh Relay Repeater node actively routing LoRa packets.
-              </div>
-            )}
+            ) : null}
           </div>
 
-          {/* Node Failure Simulation Toggle */}
-          {selectedNodeId && selectedNodeId !== 'GW-01' && (
-            <div className="pt-4 border-t border-white/10 mt-4">
+          {/* Node Failure Simulation Action Button */}
+          {selectedNodeId && (
+            <div className="pt-3 border-t border-[#1f242e] mt-3">
               <button
                 onClick={() => toggleNodeFailure(selectedNodeId)}
-                className={`w-full py-2.5 rounded-full text-xs font-mono font-medium transition-all ${
+                className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   disabledNodeIds.includes(selectedNodeId)
-                    ? 'bg-[#22c55e] text-black font-semibold hover:bg-[#16a34a]'
-                    : 'border border-[#ef4444]/40 bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444]/20'
+                    ? 'bg-[#22c55e] text-black hover:bg-[#16a34a]'
+                    : 'border border-[#ef4444]/50 bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444]/20'
                 }`}
               >
                 {disabledNodeIds.includes(selectedNodeId)
-                  ? `RESTORE NODE ${selectedNodeId}`
-                  : `SIMULATE NODE FAILURE (${selectedNodeId})`}
+                  ? `RESTORE ${selectedNodeId}`
+                  : `SIMULATE FAILURE (${selectedNodeId})`}
               </button>
-              <p className="text-[10px] font-mono text-white/40 text-center mt-2">
-                Simulating power cut or rockfall destruction tests dynamic mesh re-routing.
+              <p className="text-[10px] text-[#64748b] text-center mt-1.5">
+                Tests self-healing automatic mesh rerouting &amp; failover.
               </p>
             </div>
           )}
