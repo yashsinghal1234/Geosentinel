@@ -84,13 +84,29 @@ const AppContent: React.FC = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-black text-white selection:bg-[#818cf8]/30">
-      <TopNav />
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-6 min-h-[calc(100vh-80px)]">
-        {renderActiveView()}
-      </main>
+  // If Authenticated: Render the full-screen modern workspace (no footer)
+  if (isAuthenticated) {
+    return (
+      <div className="h-screen w-screen overflow-hidden bg-black text-white selection:bg-[#a3e635]/30">
+        <OperatorDashboard />
+        {isLoginModalOpen && (
+          <LoginModal onClose={() => setIsLoginModalOpen(false)} />
+        )}
+      </div>
+    );
+  }
 
+  // Public / Non-authenticated Layout with TopNav & Footer
+  return (
+    <div className="min-h-screen bg-black text-white selection:bg-[#a3e635]/30 flex flex-col justify-between">
+      <div>
+        <TopNav />
+        <main className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-6 min-h-[calc(100vh-80px)]">
+          {renderActiveView()}
+        </main>
+      </div>
+
+      {/* Footer is only rendered for public pages */}
       <Footer />
 
       {/* Global Login Modal for Official Access */}

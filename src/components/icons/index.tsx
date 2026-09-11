@@ -411,3 +411,40 @@ export const Cpu: React.FC<IconProps> = ({ size, className, ...props }) => (
   </svg>
 );
 
+export const Menu: React.FC<IconProps> = ({ size, className, ...props }) => (
+  <svg {...defaultProps} width={size || defaultProps.width} height={size || defaultProps.height} className={className} {...props}>
+    <line x1="4" x2="20" y1="12" y2="12" />
+    <line x1="4" x2="20" y1="6" y2="6" />
+    <line x1="4" x2="20" y1="18" y2="18" />
+  </svg>
+);
+
+export const TrendingUp: React.FC<IconProps> = ({ size, className, ...props }) => (
+  <svg {...defaultProps} width={size || defaultProps.width} height={size || defaultProps.height} className={className} {...props}>
+    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+    <polyline points="16 7 22 7 22 13" />
+  </svg>
+);
+
+export const TrendingDown: React.FC<IconProps> = ({ size, className, ...props }) => (
+  <svg {...defaultProps} width={size || defaultProps.width} height={size || defaultProps.height} className={className} {...props}>
+    <polyline points="22 17 13.5 8.5 8.5 13.5 2 7" />
+    <polyline points="16 17 22 17 22 11" />
+  </svg>
+);
+
+export const Plus: React.FC<IconProps> = ({ size, className, ...props }) => (
+  <svg {...defaultProps} width={size || defaultProps.width} height={size || defaultProps.height} className={className} {...props}>
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+
+export const Search: React.FC<IconProps> = ({ size, className, ...props }) => (
+  <svg {...defaultProps} width={size || defaultProps.width} height={size || defaultProps.height} className={className} {...props}>
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
+
+
