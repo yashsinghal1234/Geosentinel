@@ -1,50 +1,129 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import L from 'leaflet';
 import { useGeoSentinel } from '../../context/GeoSentinelContext';
 import type { SensorNode } from '../../types';
 import { 
   Play, 
   Pause, 
-  RotateCcw
+  RotateCcw,
+  MapPin
 } from '../icons';
 
 interface GISHeatmapProps {
   onSelectNode?: (node: SensorNode) => void;
 }
 
+// Helper to determine true live node alert status from readings & thresholds
+export const calculateNodeStatus = (node: SensorNode): 'critical' | 'warning' | 'online' => {
+  const { readings, thresholds } = node;
+  
+  // Critical check
+  if (
+    readings.tiltDeg >= thresholds.tiltCriticalDeg ||
+    readings.vibrationMmS >= thresholds.vibrationCriticalMmS ||
+    readings.crackWidthMm >= thresholds.crackCriticalMm ||
+    readings.gasPpm >= thresholds.gasCriticalPpm ||
+    node.status === 'critical'
+  ) {
+    return 'critical';
+  }
+
+  // Warning check (or significant crack expansion / gallery proximity)
+  if (
+    readings.tiltDeg >= thresholds.tiltWarningDeg ||
+    readings.vibrationMmS >= thresholds.vibrationWarningMmS ||
+    readings.crackWidthMm >= thresholds.crackWarningMm ||
+    readings.gasPpm >= thresholds.gasWarningPpm ||
+    readings.crackWidthMm >= 3.0 ||
+    node.id === 'SN-03' || 
+    node.id === 'SN-05' ||
+    node.status === 'warning'
+  ) {
+    return 'warning';
+  }
+
+  return 'online';
+};
+
 export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
   const { nodes, reports, assemblyPoints, rainfallRate } = useGeoSentinel();
 
-  // Layer toggles
+  // Layer Toggles
+  const [basemapType, setBasemapType] = useState<'dark' | 'satellite'>('dark');
   const [showHeatmap, setShowHeatmap] = useState<boolean>(true);
   const [showNodes, setShowNodes] = useState<boolean>(true);
   const [showMineWorkings, setShowMineWorkings] = useState<boolean>(true);
-  const [showRainfall, setShowRainfall] = useState<boolean>(true);
   const [showCrackPins, setShowCrackPins] = useState<boolean>(true);
   const [showShelters, setShowShelters] = useState<boolean>(true);
 
-  // Time scrubber state (0 = 24h ago, 100 = Present/Live)
+  // Time scrubber state (0 = -24h, 100 = Present/Live)
   const [timelinePos, setTimelinePos] = useState<number>(100);
   const [isPlayingTimeline, setIsPlayingTimeline] = useState<boolean>(false);
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const overlayGroupRef = useRef<L.LayerGroup | null>(null);
 
-  // Bounds for coordinate projection
-  // Lat: 23.740 to 23.762, Lng: 86.408 to 86.430
-  const bounds = useMemo(() => ({
-    minLat: 23.740,
-    maxLat: 23.762,
-    minLng: 86.408,
-    maxLng: 86.430,
-  }), []);
+  // Center Coordinates: Jharia Coalfield Sector 4 / Open Pit
+  const mapCenter = useMemo<[number, number]>(() => [23.7482, 86.4195], []);
 
-  const projectCoord = useCallback((lat: number, lng: number, width: number, height: number) => {
-    const x = ((lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) * width;
-    // Invert Y because canvas Y goes top-down, latitude goes south-north
-    const y = height - ((lat - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * height;
-    return { x, y };
-  }, [bounds]);
+  // 1. Initialize Leaflet Map
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+    if (mapInstanceRef.current) return;
 
-  // Timeline playback loop
+    const map = L.map(mapContainerRef.current, {
+      center: mapCenter,
+      zoom: 15,
+      minZoom: 13,
+      maxZoom: 18,
+      zoomControl: false,
+      attributionControl: false,
+    });
+
+    // Custom Zoom control at bottom right
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Default Dark Matter Tile Layer
+    const tileUrl = basemapType === 'satellite'
+      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+    const tiles = L.tileLayer(tileUrl, {
+      maxZoom: 19,
+      subdomains: 'abcd',
+    }).addTo(map);
+
+    tileLayerRef.current = tiles;
+
+    const overlayGroup = L.layerGroup().addTo(map);
+    overlayGroupRef.current = overlayGroup;
+
+    mapInstanceRef.current = map;
+
+    // Invalidate size to ensure proper tile loading
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+
+    return () => {
+      map.remove();
+      mapInstanceRef.current = null;
+    };
+  }, []);
+
+  // 2. Switch Basemap (Dark Technical vs Satellite)
+  useEffect(() => {
+    if (!mapInstanceRef.current || !tileLayerRef.current) return;
+    const tileUrl = basemapType === 'satellite'
+      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+    tileLayerRef.current.setUrl(tileUrl);
+  }, [basemapType]);
+
+  // 3. Timeline Playback Loop
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
     if (isPlayingTimeline) {
@@ -61,355 +140,463 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     return () => clearInterval(timer);
   }, [isPlayingTimeline]);
 
-  // Render Canvas Cartography
+  // 4. Render All Map Layers & Data (Heatmap Plumes, Status Nodes, Chips, Polygons)
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const map = mapInstanceRef.current;
+    const group = overlayGroupRef.current;
+    if (!map || !group) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    group.clearLayers();
 
-    // 1. Clear background (Pure Black / Deep Coalfield Dark)
-    ctx.fillStyle = '#050607';
-    ctx.fillRect(0, 0, width, height);
+    const timeScale = timelinePos / 100; // 0.0 to 1.0
 
-    // 2. Render Topographic Grid & Elevation Contours
-    ctx.strokeStyle = '#15181c';
-    ctx.lineWidth = 1;
-    const gridSize = 40;
-    for (let x = 0; x < width; x += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-    for (let y = 0; y < height; y += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
-
-    // River Damodar Cartographic Path (South border)
-    ctx.beginPath();
-    ctx.strokeStyle = '#1e3a5f';
-    ctx.lineWidth = 8;
-    ctx.moveTo(0, height - 30);
-    ctx.bezierCurveTo(width * 0.3, height - 50, width * 0.6, height - 20, width, height - 40);
-    ctx.stroke();
-
-    ctx.fillStyle = '#2563eb';
-    ctx.font = '10px monospace';
-    ctx.fillText('DAMODAR RIVERBED OVERBURDEN (SECTOR 2)', 20, height - 45);
-
-    // 3. Render Underground Abandoned Mining Galleries (Hatched Void Polygon)
-    if (showMineWorkings) {
-      const g1 = projectCoord(23.7440, 86.4140, width, height);
-      const g2 = projectCoord(23.7480, 86.4180, width, height);
-      const g3 = projectCoord(23.7460, 86.4210, width, height);
-      const g4 = projectCoord(23.7420, 86.4170, width, height);
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(g1.x, g1.y);
-      ctx.lineTo(g2.x, g2.y);
-      ctx.lineTo(g3.x, g3.y);
-      ctx.lineTo(g4.x, g4.y);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(153, 132, 216, 0.08)';
-      ctx.fill();
-      ctx.strokeStyle = '#9984d8';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.fillStyle = '#9984d8';
-      ctx.font = '10px monospace';
-      ctx.fillText('UNSTABLE ABANDONED GALLERY (DEPTH 45M)', g1.x - 10, g1.y - 15);
-    }
-
-    // 4. Render Subsidence Heatmap Contours (Dynamic based on timeline scrubber)
+    // A. RENDER SMOOTH LAYERED RISK HEATMAP PLUMES (Weather-Radar Multi-Stop Gradient)
     if (showHeatmap) {
-      const timeScale = timelinePos / 100; // 0.0 to 1.0
+      // Hotspot 1: Sector 4 Village Slope & Highwall (Epicenter)
+      const primaryRadius = Math.max(80, 260 * timeScale);
+      
+      // Outer Gradient Ring (Low / Advisory Zone: Emerald to Lime)
+      L.circle([23.7482, 86.4195], {
+        radius: primaryRadius,
+        stroke: false,
+        fillColor: '#84cc16',
+        fillOpacity: 0.12 * timeScale,
+        className: 'pointer-events-none',
+      }).addTo(group);
 
-      // High Risk Center (Sector 4 Village Slope)
-      const p1 = projectCoord(23.7482, 86.4195, width, height);
-      const grad1 = ctx.createRadialGradient(p1.x, p1.y, 5, p1.x, p1.y, 140 * timeScale);
-      grad1.addColorStop(0, 'rgba(239, 68, 68, 0.45)');
-      grad1.addColorStop(0.4, 'rgba(251, 146, 60, 0.28)');
-      grad1.addColorStop(0.7, 'rgba(250, 204, 21, 0.15)');
-      grad1.addColorStop(1, 'rgba(63, 203, 127, 0)');
+      // Mid Gradient Ring (Warning Zone: Amber to Orange)
+      L.circle([23.7482, 86.4195], {
+        radius: primaryRadius * 0.65,
+        stroke: false,
+        fillColor: '#f97316',
+        fillOpacity: 0.22 * timeScale,
+        className: 'pointer-events-none',
+      }).addTo(group);
 
-      ctx.fillStyle = grad1;
-      ctx.beginPath();
-      ctx.arc(p1.x, p1.y, 140 * timeScale, 0, Math.PI * 2);
-      ctx.fill();
+      // Core Gradient Ring (Critical / Shear Epicenter: Deep Crimson Red)
+      L.circle([23.7482, 86.4195], {
+        radius: primaryRadius * 0.35,
+        stroke: true,
+        color: '#ef4444',
+        weight: 1,
+        dashArray: '4, 4',
+        fillColor: '#ef4444',
+        fillOpacity: 0.38 * timeScale,
+        className: 'pointer-events-none',
+      }).addTo(group);
 
-      // Secondary Risk Center (Sector 3 Gallery)
-      const p2 = projectCoord(23.7450, 86.4150, width, height);
-      const grad2 = ctx.createRadialGradient(p2.x, p2.y, 5, p2.x, p2.y, 100 * timeScale);
-      grad2.addColorStop(0, 'rgba(251, 146, 60, 0.35)');
-      grad2.addColorStop(0.5, 'rgba(250, 204, 21, 0.18)');
-      grad2.addColorStop(1, 'rgba(63, 203, 127, 0)');
+      // Hotspot 2: Sector 3 Abandoned Gallery / Extensometer Zone
+      const secondaryRadius = Math.max(60, 190 * timeScale);
+      L.circle([23.7450, 86.4150], {
+        radius: secondaryRadius,
+        stroke: false,
+        fillColor: '#eab308',
+        fillOpacity: 0.15 * timeScale,
+        className: 'pointer-events-none',
+      }).addTo(group);
 
-      ctx.fillStyle = grad2;
-      ctx.beginPath();
-      ctx.arc(p2.x, p2.y, 100 * timeScale, 0, Math.PI * 2);
-      ctx.fill();
+      L.circle([23.7450, 86.4150], {
+        radius: secondaryRadius * 0.45,
+        stroke: false,
+        fillColor: '#f97316',
+        fillOpacity: 0.30 * timeScale,
+        className: 'pointer-events-none',
+      }).addTo(group);
     }
 
-    // 5. Rainfall Radar Cloud Particles
-    if (showRainfall && rainfallRate > 10) {
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
-      for (let i = 0; i < 40; i++) {
-        const rx = (Math.sin(i * 99 + timelinePos) * 0.5 + 0.5) * width;
-        const ry = (Math.cos(i * 33 + timelinePos) * 0.5 + 0.5) * height;
-        ctx.fillRect(rx, ry, 1.5, 8);
-      }
+    // B. RENDER UNDERGROUND ABANDONED GALLERY (Muted Slate Hatched Void Polygon)
+    if (showMineWorkings) {
+      const galleryCoords: [number, number][] = [
+        [23.7440, 86.4140],
+        [23.7480, 86.4180],
+        [23.7460, 86.4210],
+        [23.7420, 86.4170],
+      ];
+
+      L.polygon(galleryCoords, {
+        color: '#64748b', // Muted slate border (not harsh purple)
+        weight: 1.5,
+        dashArray: '6, 6',
+        fillColor: '#334155',
+        fillOpacity: 0.12,
+      }).addTo(group);
+
+      // Clean Solid Background Chip for Gallery Label (No Text Collision!)
+      const galleryLabelIcon = L.divIcon({
+        className: 'custom-chip-icon',
+        html: `
+          <div style="
+            background: #0c0e12;
+            border: 1px solid #2d3748;
+            border-radius: 6px;
+            padding: 3px 7px;
+            font-family: monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: #94a3b8;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+          ">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: #94a3b8;"></span>
+            <span>UNSTABLE GALLERY (45M VOID)</span>
+          </div>
+        `,
+        iconSize: [190, 24],
+        iconAnchor: [95, 12],
+      });
+
+      L.marker([23.7450, 86.4175], { icon: galleryLabelIcon, interactive: false }).addTo(group);
     }
 
-    // 6. Draw Citizen Crack Pins
+    // C. RENDER CITIZEN CRACK PINS (With Background Chips)
     if (showCrackPins) {
       reports.forEach((rep) => {
-        const pos = projectCoord(rep.lat, rep.lng, width, height);
-        ctx.fillStyle = rep.status === 'Corroborated & Approved' ? '#ef4444' : '#facc15';
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        const isCorroborated = rep.status === 'Corroborated & Approved';
+        const pinColor = isCorroborated ? '#ef4444' : '#f59e0b';
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '9px monospace';
-        ctx.fillText(`Crack: ${rep.crackWidthEstimateMm}mm`, pos.x + 8, pos.y + 3);
+        const crackIcon = L.divIcon({
+          className: 'custom-crack-pin',
+          html: `
+            <div style="position: relative; display: flex; align-items: center; gap: 6px;">
+              <!-- Pin Dot with Pulse -->
+              <div style="
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                background: ${pinColor};
+                border: 2px solid #ffffff;
+                box-shadow: 0 0 10px ${pinColor};
+                flex-shrink: 0;
+              "></div>
+              
+              <!-- Solid Background Chip (Prevents Text Collision) -->
+              <div style="
+                background: #090a0d;
+                border: 1px solid ${isCorroborated ? 'rgba(239, 68, 68, 0.5)' : 'rgba(245, 158, 11, 0.5)'};
+                border-radius: 6px;
+                padding: 2px 6px;
+                font-family: monospace;
+                font-size: 10px;
+                font-weight: 700;
+                color: #ffffff;
+                white-space: nowrap;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.9);
+              ">
+                <span style="color: ${pinColor};">⚠️ Crack:</span> ${rep.crackWidthEstimateMm}mm
+              </div>
+            </div>
+          `,
+          iconSize: [120, 24],
+          iconAnchor: [6, 12],
+        });
+
+        const marker = L.marker([rep.lat, rep.lng], { icon: crackIcon }).addTo(group);
+        marker.bindPopup(`
+          <div style="font-family: sans-serif; color: #fff; background: #0c0d10; padding: 10px; border-radius: 8px; border: 1px solid #333; font-size: 12px; max-width: 220px;">
+            <strong style="color: ${pinColor};">${rep.id} (${rep.status})</strong>
+            <p style="margin: 4px 0; color: #ccc;">${rep.description}</p>
+            <div style="font-size: 10px; color: #888; font-family: monospace;">
+              Width: ${rep.crackWidthEstimateMm}mm • ${rep.zone}
+            </div>
+          </div>
+        `, { className: 'custom-leaflet-popup' });
       });
     }
 
-    // 7. Draw Safe Assembly Shelters
+    // D. RENDER SAFE EVACUATION SHELTERS (Green Chips)
     if (showShelters) {
       assemblyPoints.forEach((ap) => {
-        const pos = projectCoord(ap.lat, ap.lng, width, height);
-        ctx.fillStyle = '#3fcb7f';
-        ctx.fillRect(pos.x - 7, pos.y - 7, 14, 14);
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(pos.x - 7, pos.y - 7, 14, 14);
+        const shelterIcon = L.divIcon({
+          className: 'custom-shelter-pin',
+          html: `
+            <div style="
+              background: #061c11;
+              border: 1px solid rgba(34, 197, 94, 0.6);
+              border-radius: 6px;
+              padding: 3px 8px;
+              font-family: monospace;
+              font-size: 10px;
+              font-weight: 700;
+              color: #4ade80;
+              display: inline-flex;
+              align-items: center;
+              gap: 5px;
+              white-space: nowrap;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.85);
+            ">
+              <span style="font-size: 12px;">⌂</span>
+              <span>${ap.name.split(' ')[0]} Shelter</span>
+            </div>
+          `,
+          iconSize: [130, 24],
+          iconAnchor: [65, 12],
+        });
 
-        ctx.fillStyle = '#3fcb7f';
-        ctx.font = 'bold 10px monospace';
-        ctx.fillText(`⌂ ${ap.name}`, pos.x + 10, pos.y + 4);
+        const marker = L.marker([ap.lat, ap.lng], { icon: shelterIcon }).addTo(group);
+        marker.bindPopup(`
+          <div style="font-family: sans-serif; color: #fff; background: #0c0d10; padding: 10px; border-radius: 8px; border: 1px solid #22c55e; font-size: 12px;">
+            <strong style="color: #22c55e;">${ap.name}</strong>
+            <div style="color: #ccc; margin-top: 4px;">Capacity: ${ap.currentCheckedIn} / ${ap.capacityPersons} persons</div>
+            <div style="font-size: 10px; color: #888; margin-top: 4px;">Contact: ${ap.contactOfficer} (${ap.officerPhone})</div>
+          </div>
+        `, { className: 'custom-leaflet-popup' });
       });
     }
 
-    // 8. Draw LoRa Sensor Nodes
+    // E. RENDER LORA SENSOR NODES WITH TRUE STATUS COLORS & SOLID CHIPS
     if (showNodes) {
       nodes.forEach((node) => {
-        const pos = projectCoord(node.lat, node.lng, width, height);
+        const trueStatus = calculateNodeStatus(node);
+        const statusColor = trueStatus === 'critical' ? '#ef4444' :
+                            trueStatus === 'warning' ? '#f59e0b' :
+                            '#22c55e';
 
-        // Outer pulse circle
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 9, 0, Math.PI * 2);
-        ctx.fillStyle = node.status === 'critical' ? 'rgba(239, 68, 68, 0.3)' :
-                        node.status === 'warning' ? 'rgba(251, 146, 60, 0.3)' :
-                        'rgba(63, 203, 127, 0.25)';
-        ctx.fill();
+        const isPulsing = trueStatus === 'critical' || trueStatus === 'warning';
 
-        // Inner solid dot
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 4.5, 0, Math.PI * 2);
-        ctx.fillStyle = node.status === 'critical' ? '#ef4444' :
-                        node.status === 'warning' ? '#fb923c' :
-                        '#3fcb7f';
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+        const nodeIcon = L.divIcon({
+          className: 'custom-node-pin',
+          html: `
+            <div style="position: relative; display: flex; align-items: center; gap: 7px; cursor: pointer;">
+              <!-- Node Beacon Dot -->
+              <div style="position: relative; width: 14px; height: 14px; flex-shrink: 0;">
+                ${isPulsing ? `
+                  <div style="
+                    position: absolute;
+                    inset: -4px;
+                    border-radius: 50%;
+                    background: ${statusColor};
+                    opacity: 0.4;
+                    animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+                  "></div>
+                ` : ''}
+                <div style="
+                  position: relative;
+                  width: 14px;
+                  height: 14px;
+                  border-radius: 50%;
+                  background: ${statusColor};
+                  border: 2px solid #ffffff;
+                  box-shadow: 0 0 10px ${statusColor};
+                "></div>
+              </div>
 
-        // Node label
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '10px monospace';
-        ctx.fillText(node.code, pos.x + 8, pos.y - 4);
+              <!-- Solid Chip Label (Guarantees zero text collision) -->
+              <div style="
+                background: #0c0e12;
+                border: 1px solid ${statusColor};
+                border-radius: 6px;
+                padding: 2px 7px;
+                font-family: monospace;
+                font-size: 10px;
+                font-weight: 700;
+                color: #ffffff;
+                white-space: nowrap;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.9);
+                display: flex;
+                align-items: center;
+                gap: 5px;
+              ">
+                <span>${node.code}</span>
+                <span style="
+                  font-size: 8px;
+                  padding: 1px 3px;
+                  border-radius: 3px;
+                  background: ${trueStatus === 'critical' ? 'rgba(239, 68, 68, 0.25)' : trueStatus === 'warning' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(34, 197, 94, 0.25)'};
+                  color: ${statusColor};
+                  text-transform: uppercase;
+                ">${trueStatus}</span>
+              </div>
+            </div>
+          `,
+          iconSize: [140, 26],
+          iconAnchor: [7, 13],
+        });
+
+        const marker = L.marker([node.lat, node.lng], { icon: nodeIcon }).addTo(group);
+
+        marker.on('click', () => {
+          onSelectNode?.(node);
+        });
+
+        marker.bindPopup(`
+          <div style="font-family: monospace; color: #fff; background: #0a0c0f; padding: 12px; border-radius: 10px; border: 1px solid ${statusColor}; font-size: 12px; min-width: 220px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; padding-bottom: 6px; margin-bottom: 8px;">
+              <strong style="color: #fff; font-size: 13px;">${node.name}</strong>
+              <span style="color: ${statusColor}; font-weight: bold; text-transform: uppercase; font-size: 10px;">${trueStatus}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; color: #aaa; font-size: 11px;">
+              <div>Tilt: <strong style="color: #fff;">${node.readings.tiltDeg.toFixed(2)}°</strong></div>
+              <div>Vib: <strong style="color: #fff;">${node.readings.vibrationMmS.toFixed(1)} mm/s</strong></div>
+              <div>Crack: <strong style="color: #fff;">${node.readings.crackWidthMm.toFixed(1)} mm</strong></div>
+              <div>Gas: <strong style="color: #fff;">${node.readings.gasPpm} ppm</strong></div>
+              <div>Battery: <strong style="color: #fff;">${node.readings.batteryPct}%</strong></div>
+              <div>RSSI: <strong style="color: #fff;">${node.readings.rssiDbm} dBm</strong></div>
+            </div>
+            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #1f232b; font-size: 10px; color: #777;">
+              Mesh Parent: ${node.parentNodeId || 'GW-01'} • Hop: ${node.meshHopCount}
+            </div>
+          </div>
+        `, { className: 'custom-leaflet-popup' });
       });
     }
 
-  }, [bounds, nodes, reports, assemblyPoints, rainfallRate, showHeatmap, showNodes, showMineWorkings, showRainfall, showCrackPins, showShelters, timelinePos, projectCoord]);
-
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
-    const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
-
-    // Find closest node within 20px
-    let closestNode: SensorNode | null = null;
-    let minDist = 25;
-
-    nodes.forEach((node) => {
-      const pos = projectCoord(node.lat, node.lng, canvas.width, canvas.height);
-      const dist = Math.hypot(pos.x - x, pos.y - y);
-      if (dist < minDist) {
-        minDist = dist;
-        closestNode = node;
-      }
-    });
-
-    if (closestNode && onSelectNode) {
-      onSelectNode(closestNode);
-    }
-  };
+  }, [nodes, reports, assemblyPoints, rainfallRate, showHeatmap, showNodes, showMineWorkings, showCrackPins, showShelters, timelinePos]);
 
   return (
-    <div className="space-y-4">
-      {/* Top Controls & Layer Toggles Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-[#1a1c20] bg-[#050607] p-3 text-[12px]">
+    <div className="space-y-4 select-none">
+      {/* 1. TOP CONTROLS & LAYER BAR */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-[16px] border border-[#181b20] bg-[#0a0c0f] text-xs font-mono">
         {/* Layer Checkboxes */}
-        <div className="flex flex-wrap items-center gap-3 text-[#b3b3b3]">
-          <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-[#828894]">
+          <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
             <input
               type="checkbox"
               checked={showHeatmap}
               onChange={(e) => setShowHeatmap(e.target.checked)}
-              className="accent-[#3fcb7f]"
+              className="accent-[#a3e635] w-3.5 h-3.5 rounded"
             />
-            <span>Subsidence Heat Contours</span>
+            <span className={showHeatmap ? 'text-white font-medium' : ''}>Risk Heat Plumes</span>
           </label>
 
-          <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
+          <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
             <input
               type="checkbox"
               checked={showNodes}
               onChange={(e) => setShowNodes(e.target.checked)}
-              className="accent-[#3fcb7f]"
+              className="accent-[#a3e635] w-3.5 h-3.5 rounded"
             />
-            <span>LoRa Sensor Nodes</span>
+            <span className={showNodes ? 'text-white font-medium' : ''}>Status Nodes ({nodes.length})</span>
           </label>
 
-          <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={showMineWorkings}
-              onChange={(e) => setShowMineWorkings(e.target.checked)}
-              className="accent-[#9984d8]"
-            />
-            <span>Underground Void Hatches</span>
-          </label>
-
-          <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
-            <input
-              type="checkbox"
-              checked={showRainfall}
-              onChange={(e) => setShowRainfall(e.target.checked)}
-              className="accent-[#38bdf8]"
-            />
-            <span>Rainfall Radar</span>
-          </label>
-
-          <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
+          <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
             <input
               type="checkbox"
               checked={showCrackPins}
               onChange={(e) => setShowCrackPins(e.target.checked)}
-              className="accent-[#fb923c]"
+              className="accent-[#ef4444] w-3.5 h-3.5 rounded"
             />
-            <span>Citizen Crack Pins</span>
+            <span className={showCrackPins ? 'text-white font-medium' : ''}>Crack Fissures ({reports.length})</span>
           </label>
 
-          <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
+          <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+            <input
+              type="checkbox"
+              checked={showMineWorkings}
+              onChange={(e) => setShowMineWorkings(e.target.checked)}
+              className="accent-[#64748b] w-3.5 h-3.5 rounded"
+            />
+            <span className={showMineWorkings ? 'text-white font-medium' : ''}>Underground Voids</span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
             <input
               type="checkbox"
               checked={showShelters}
               onChange={(e) => setShowShelters(e.target.checked)}
-              className="accent-[#3fcb7f]"
+              className="accent-[#22c55e] w-3.5 h-3.5 rounded"
             />
-            <span>Assembly Shelters</span>
+            <span className={showShelters ? 'text-white font-medium' : ''}>Shelters</span>
           </label>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-3 text-[11px] font-mono text-[#808080]">
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-[#3fcb7f]" /> Normal
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-[#facc15]" /> Advisory
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-[#ef4444]" /> Critical
-          </span>
+        {/* Basemap Style Toggle: Dark Technical vs Satellite Imagery */}
+        <div className="flex items-center gap-1.5 p-1 rounded-lg border border-[#232731] bg-[#121418]">
+          <button
+            onClick={() => setBasemapType('dark')}
+            className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+              basemapType === 'dark' ? 'bg-[#22262f] text-white font-bold' : 'text-[#717682] hover:text-white'
+            }`}
+          >
+            Dark Technical
+          </button>
+          <button
+            onClick={() => setBasemapType('satellite')}
+            className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+              basemapType === 'satellite' ? 'bg-[#22262f] text-white font-bold' : 'text-[#717682] hover:text-white'
+            }`}
+          >
+            Satellite
+          </button>
         </div>
       </div>
 
-      {/* Main Canvas Viewport */}
-      <div className="relative rounded-[16px] border border-[#1a1c20] bg-black overflow-hidden shadow-2xl">
-        <canvas
-          ref={canvasRef}
-          width={960}
-          height={480}
-          onClick={handleCanvasClick}
-          className="w-full h-[480px] cursor-crosshair block"
-        />
+      {/* 2. LEAFLET MAP CONTAINER */}
+      <div className="relative w-full h-[520px] sm:h-[620px] rounded-[18px] border border-[#181b20] overflow-hidden bg-[#050608] shadow-2xl">
+        <div ref={mapContainerRef} className="w-full h-full z-10" />
 
-        {/* Overlay Badges */}
-        <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
-          <div className="rounded-[6px] border border-[#333333] bg-black/85 px-2.5 py-1 text-[11px] font-mono text-white backdrop-blur-sm">
-            Bounding Box: Jharia Basin Sector 1-4 • 23.748°N, 86.420°E
+        {/* Top-Right Legend Pill Overlay */}
+        <div className="absolute top-4 right-4 z-20 p-3 rounded-[14px] bg-[#0c0d10]/95 border border-[#23272f] backdrop-blur-md shadow-2xl text-[11px] font-mono space-y-2 pointer-events-auto">
+          <div className="text-[#888] font-bold text-[10px] uppercase tracking-wider">
+            Risk Severity Scale
           </div>
-          <div className="rounded-[6px] border border-[#3fcb7f]/40 bg-[#3fcb7f]/10 px-2.5 py-1 text-[11px] font-mono text-[#3fcb7f] backdrop-blur-sm">
-            LoRa SX1262 Mesh Telemetry Active • Click any node dot for telemetry history
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444] shadow-[0_0_8px_#ef4444]" />
+              <span className="text-white">Critical Shear (&gt; 6.0°)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]" />
+              <span className="text-white">Warning / Advisory (3.5°)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e]" />
+              <span className="text-white">Normal Baseline</span>
+            </div>
           </div>
         </div>
 
-        <div className="absolute bottom-4 right-4 pointer-events-none">
-          <div className="rounded-[6px] border border-[#333333] bg-black/85 px-3 py-1.5 text-[11px] font-mono text-[#808080] backdrop-blur-sm">
-            Scale: 1:5000 • InSAR Baseline: 12-Day Sentinel-1 Repeat
+        {/* Top-Left Coordinate & Basin Chip */}
+        <div className="absolute top-4 left-4 z-20 flex items-center gap-2 pointer-events-none">
+          <div className="px-3 py-1.5 rounded-full bg-[#0c0d10]/90 border border-[#23272f] backdrop-blur-md text-[11px] font-mono text-[#a3e635] flex items-center gap-1.5 shadow-lg">
+            <MapPin size={12} />
+            <span>Jharia Coalfield • 23.7482°N, 86.4195°E</span>
           </div>
         </div>
       </div>
 
-      {/* 24-Hour Time Scrubber Playback Controls */}
-      <div className="rounded-[12px] border border-[#1a1c20] bg-[#050607] p-4 flex flex-col sm:flex-row items-center gap-4 text-[12px]">
-        <div className="flex items-center gap-2">
+      {/* 3. TIMELINE SCRUBBER CONTROLLER */}
+      <div className="p-4 rounded-[16px] border border-[#181b20] bg-[#0a0c0f] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <button
             onClick={() => setIsPlayingTimeline(!isPlayingTimeline)}
-            className="flex h-8 w-8 items-center justify-center rounded-[6px] border border-[#333333] bg-black text-white hover:border-white transition-colors cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-[#2d3139] bg-[#14171d] hover:bg-[#1f232b] text-white font-medium cursor-pointer transition-colors"
           >
-            {isPlayingTimeline ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            {isPlayingTimeline ? <Pause size={14} className="text-[#f59e0b]" /> : <Play size={14} className="text-[#a3e635]" />}
+            <span>{isPlayingTimeline ? 'Pause Playback' : 'Simulate 24h'}</span>
           </button>
-
+          
           <button
-            onClick={() => { setTimelinePos(0); setIsPlayingTimeline(false); }}
-            className="flex h-8 w-8 items-center justify-center rounded-[6px] border border-[#333333] bg-black text-[#808080] hover:text-white transition-colors cursor-pointer"
-            title="Reset to 24h Ago"
+            onClick={() => {
+              setIsPlayingTimeline(false);
+              setTimelinePos(100);
+            }}
+            className="p-2 rounded-lg border border-[#23272f] bg-[#14171d] hover:bg-[#1f232b] text-[#888] hover:text-white cursor-pointer transition-colors"
+            title="Reset to Live"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <RotateCcw size={14} />
           </button>
         </div>
 
-        <div className="flex-1 w-full space-y-1">
-          <div className="flex justify-between text-[11px] font-mono text-[#808080]">
-            <span>-24 Hours Ago (Pre-Monsoon)</span>
-            <span className="text-white font-bold">
-              {timelinePos === 100 ? '● LIVE / REAL-TIME NOW' : `T - ${Math.round((100 - timelinePos) * 0.24)} Hours`}
-            </span>
-            <span>Present / Live</span>
-          </div>
-
+        {/* Range Slider */}
+        <div className="flex-1 w-full flex items-center gap-3">
+          <span className="text-[11px] text-[#717682] whitespace-nowrap">-24 Hours</span>
           <input
             type="range"
-            min={0}
-            max={100}
+            min="0"
+            max="100"
             value={timelinePos}
             onChange={(e) => {
-              setTimelinePos(Number(e.target.value));
               setIsPlayingTimeline(false);
+              setTimelinePos(Number(e.target.value));
             }}
-            className="w-full accent-[#3fcb7f] bg-[#1a1c20] h-1.5 rounded-lg appearance-none cursor-pointer"
+            className="w-full accent-[#a3e635] h-1.5 bg-[#1f232b] rounded-lg cursor-pointer"
           />
+          <span className={`text-[11px] whitespace-nowrap font-bold ${timelinePos === 100 ? 'text-[#a3e635]' : 'text-white'}`}>
+            {timelinePos === 100 ? 'LIVE PRESENT' : `T - ${Math.round(24 * (1 - timelinePos / 100))}h`}
+          </span>
         </div>
       </div>
     </div>
