@@ -1,7 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from database import connect_to_mongo, close_mongo_connection, get_db
-from routes import ingest, nodes, alerts, reports, dashboard, checkin, auth, gateway
+from routes import ingest, nodes, alerts, reports, dashboard, checkin, auth, gateway, topology
 from services.websocket_manager import manager
 from routes.auth import get_current_user
 import logging
@@ -45,6 +45,7 @@ async def shutdown_db_client():
 # Include Routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(nodes.router, prefix="/api/nodes", tags=["Nodes"])
+app.include_router(topology.router, prefix="/api/topology", tags=["Topology"])
 app.include_router(ingest.router, prefix="/api/ingest", tags=["Ingest"])
 app.include_router(gateway.router, prefix="/api/gateway", tags=["Gateway"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])

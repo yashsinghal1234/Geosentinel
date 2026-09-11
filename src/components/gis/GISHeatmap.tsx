@@ -462,12 +462,13 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 12px;
+                font-size: 9px;
+                font-weight: 900;
                 color: #ffffff;
                 box-shadow: 0 0 16px #a855f7, 0 0 4px #ffffff;
                 flex-shrink: 0;
               ">
-                ⚡
+                HUB
               </div>
 
               <!-- Solid Chip Label -->
@@ -503,7 +504,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
               <div>
                 <div style="color: #e9d5ff; font-size: 13px; font-weight: 800; letter-spacing: -0.01em;">${master.name}</div>
                 <div style="color: #94a3b8; font-size: 10px; margin-top: 2px;">
-                  📍 ${master.lat.toFixed(4)}°N, ${master.lng.toFixed(4)}°E • ${master.ip}
+                  Lat: ${master.lat.toFixed(4)}°N, Lng: ${master.lng.toFixed(4)}°E • ${master.ip}
                 </div>
               </div>
               <span style="
@@ -517,7 +518,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
                 font-weight: 800;
                 letter-spacing: 0.05em;
                 white-space: nowrap;
-              ">● EDGE ONLINE</span>
+              ">EDGE ONLINE</span>
             </div>
 
             <!-- Hardware Tag -->
@@ -669,7 +670,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
               <div>
                 <div style="color: #ffffff; font-size: 13px; font-weight: 800; letter-spacing: -0.01em;">${node.name}</div>
                 <div style="color: #64748b; font-size: 10px; margin-top: 2px;">
-                  📍 ${node.lat.toFixed(4)}°N, ${node.lng.toFixed(4)}°E
+                  Lat: ${node.lat.toFixed(4)}°N, Lng: ${node.lng.toFixed(4)}°E
                 </div>
               </div>
               <span style="
@@ -800,7 +801,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
                 white-space: nowrap;
                 box-shadow: 0 3px 10px rgba(0,0,0,0.95);
               ">
-                <span style="color: ${pinColor};">⚠️ Crack:</span> ${rep.crackWidthEstimateMm}mm
+                <span style="color: ${pinColor}; font-weight: 800;">CRACK:</span> ${rep.crackWidthEstimateMm}mm
               </div>
             </div>
           `,
@@ -894,8 +895,8 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
               white-space: nowrap;
               box-shadow: 0 4px 14px rgba(34, 197, 94, 0.45);
             ">
-              <span style="font-size: 13px;">⌂</span>
-              <span>${ap.name.split(' ')[0]} Shelter</span>
+              <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; background: rgba(34, 197, 94, 0.3); color: #86efac; font-weight: 800;">SHELTER</span>
+              <span>${ap.name.split(' ')[0]}</span>
             </div>
           `,
           iconSize: [140, 26],
@@ -906,7 +907,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
         marker.bindPopup(`
           <div style="font-family: 'JetBrains Mono', monospace, sans-serif; color: #ffffff; background: #06150c; padding: 12px; border-radius: 10px; border: 1.5px solid #22c55e; box-shadow: 0 16px 36px rgba(0,0,0,0.95); min-width: 250px; max-width: 280px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #14532d; padding-bottom: 6px; margin-bottom: 8px;">
-              <strong style="color: #4ade80; font-size: 13px;">⌂ ${ap.name}</strong>
+              <strong style="color: #4ade80; font-size: 13px;">${ap.name}</strong>
               <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(34, 197, 94, 0.2); color: #22c55e; font-weight: bold;">SAFE ZONE</span>
             </div>
             <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 6px;">
@@ -1043,7 +1044,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
               <span className="text-white">ESP32-S3 Pod (Normal)</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded bg-[#a855f7] text-[8px] flex items-center justify-center font-bold text-white">⚡</span>
+              <span className="w-3 h-3 rounded-[3px] bg-[#a855f7] border border-[#d8b4fe]" />
               <span className="text-[#d8b4fe]">Raspberry Pi 4 Master</span>
             </div>
             <div className="flex items-center gap-2">

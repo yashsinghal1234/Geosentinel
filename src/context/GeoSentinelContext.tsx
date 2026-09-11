@@ -14,7 +14,8 @@ import type {
   SupportedLanguage,
   AlertLevel,
   MineSite,
-  SectorInfo
+  SectorInfo,
+  DynamicTopologyResponse
 } from '../types';
 import { evaluateGeologicalRisk } from '../services/PhysicsEngine';
 import { audioService } from '../services/AudioService';
@@ -600,6 +601,8 @@ interface GeoSentinelContextType {
   setSelectedMine: (mineId: string) => void;
   setSelectedSector: (sectorId: string) => void;
   filteredNodes: SensorNode[];
+  topologyData: DynamicTopologyResponse | null;
+  refreshTopology: () => Promise<void>;
   
   // Auth state
   isAuthenticated: boolean;
@@ -695,7 +698,8 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [nodes, setNodes] = useState<SensorNode[]>(INITIAL_NODES);
 
   const [gateway, setGateway] = useState<GatewayDevice>(INITIAL_GATEWAY);
-  const [links] = useState<MeshLink[]>(INITIAL_LINKS);
+  const [links, setLinks] = useState<MeshLink[]>(INITIAL_LINKS);
+  const [topologyData, setTopologyData] = useState<DynamicTopologyResponse | null>(null);
   const [alerts, setAlerts] = useState<AlertDispatchRecord[]>(INITIAL_ALERTS);
   const [reports, setReports] = useState<CitizenCrackReport[]>(INITIAL_REPORTS);
   const [assemblyPoints, setAssemblyPoints] = useState<EvacuationAssemblyPoint[]>(INITIAL_ASSEMBLY_POINTS);
@@ -1010,12 +1014,44 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   }, [nodes, rainfallRate, falseAlarmSuppression, gateway.localSirenActive, triggerEdgeSiren]);
 
+  const refreshTopology = useCallback(async () => {
+    try {
+      const res = await fetch('/api/topology');
+      if (res.ok) {
+        const text = await res.text();
+        if (text) {
+          try {
+            const data: DynamicTopologyResponse = JSON.parse(text);
+            if (data && data.nodes && data.nodes.length > 0) {
+              setTopologyData(data);
+              if (data.links && data.links.length > 0) {
+                setLinks(data.links);
+              }
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+      }
+    } catch (err) {
+      // Offline fallback
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshTopology();
+    const topInterval = setInterval(refreshTopology, 4000);
+    return () => clearInterval(topInterval);
+  }, [refreshTopology]);
+
   return (
     <GeoSentinelContext.Provider
       value={{
         nodes,
         gateway,
         links,
+        topologyData,
+        refreshTopology,
         risk,
         alerts,
         reports,

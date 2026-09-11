@@ -1,28 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { useGeoSentinel } from '../../context/GeoSentinelContext';
-import type { GatewayDevice } from '../../types';
+import type { GatewayDevice, TopologyNode } from '../../types';
 import { Radio } from '../icons';
 
-interface TopologyNodePos {
-  id: string;
-  name: string;
-  code: string;
-  x: number;
-  y: number;
-  sector: number;
-  isMaster?: boolean;
-}
-
-// Master Gateway Hubs (Raspberry Pi 4) matching hardware architecture
+// Default Sector Masters matching physical hardware (Raspberry Pi 4)
 const SECTOR_MASTERS: GatewayDevice[] = [
   {
     id: 'MASTER-S1',
-    name: 'Sector-1 Master (Raspberry Pi 4)',
+    name: 'Sector-1 Master Hub (Raspberry Pi 4)',
     code: 'RPI4-SEC1-HUB',
     hardwareModel: 'Raspberry Pi 4 Model B',
     sectorNum: 1,
-    lat: 23.7520,
-    lng: 86.4220,
+    lat: 23.7535,
+    lng: 86.4225,
     ip: '192.168.1.1',
     mac: 'DC:A6:32:4E:91:A1',
     status: 'online',
@@ -45,12 +35,12 @@ const SECTOR_MASTERS: GatewayDevice[] = [
   },
   {
     id: 'MASTER-S2',
-    name: 'Sector-2 Master (Raspberry Pi 4)',
+    name: 'Sector-2 Master Hub (Raspberry Pi 4)',
     code: 'RPI4-SEC2-HUB',
     hardwareModel: 'Raspberry Pi 4 Model B',
     sectorNum: 2,
-    lat: 23.7468,
-    lng: 86.4180,
+    lat: 23.7465,
+    lng: 86.4175,
     ip: '192.168.2.1',
     mac: 'DC:A6:32:4E:91:B2',
     status: 'online',
@@ -74,99 +64,192 @@ const SECTOR_MASTERS: GatewayDevice[] = [
 ];
 
 export const MeshTopologyView: React.FC = () => {
-  const { nodes } = useGeoSentinel();
+  const { nodes, topologyData } = useGeoSentinel();
   const [selectedNodeId, setSelectedNodeId] = useState<string>('MASTER-S1');
   const [disabledNodeIds, setDisabledNodeIds] = useState<string[]>([]);
   const [protocolFilter, setProtocolFilter] = useState<'all' | 'wifi' | 'lora'>('all');
 
-  // Node spatial SVG layout tailored to Sector 1 & Sector 2 clusters
-  const defaultPositions: Record<string, { x: number; y: number }> = {
-    // Sector 1 Hub & ESP32-S3 Pods
-    'MASTER-S1': { x: 270, y: 105 },
-    'NODE-A': { x: 160, y: 225 },
-    'NODE-B': { x: 370, y: 225 },
-    'NODE-C': { x: 110, y: 375 },
-    'NODE-D': { x: 260, y: 385 },
-
-    // Sector 2 Hub & ESP32-S3 Pods
-    'MASTER-S2': { x: 730, y: 105 },
-    'NODE-X': { x: 630, y: 225 },
-    'NODE-Y': { x: 840, y: 225 },
-    'NODE-Z': { x: 670, y: 385 },
-    'NODE-W': { x: 890, y: 375 },
-  };
-
-  // Build full topology node list
-  const allNodesList = useMemo<TopologyNodePos[]>(() => {
-    const list: TopologyNodePos[] = [
-      {
-        id: 'MASTER-S1',
-        name: 'Sector-1 Master Hub',
-        code: 'RPI4-SEC1-HUB',
-        x: defaultPositions['MASTER-S1'].x,
-        y: defaultPositions['MASTER-S1'].y,
-        sector: 1,
-        isMaster: true,
-      },
-      {
-        id: 'MASTER-S2',
-        name: 'Sector-2 Master Hub',
-        code: 'RPI4-SEC2-HUB',
-        x: defaultPositions['MASTER-S2'].x,
-        y: defaultPositions['MASTER-S2'].y,
-        sector: 2,
-        isMaster: true,
-      },
-    ];
-
-    nodes.forEach((n, idx) => {
-      const pos = defaultPositions[n.id] || {
-        x: n.sector === 2 ? 650 + (idx % 3) * 90 : 180 + (idx % 3) * 90,
-        y: 240 + Math.floor(idx / 3) * 120,
+  // Dynamically project real GPS coordinates (lat, lng) to Canvas coordinates (x, y)
+  const computedTopology = useMemo(() => {
+    // If backend provided pre-computed normalized topology, use it
+    if (topologyData && topologyData.nodes && topologyData.nodes.length > 0) {
+      return {
+        nodes: topologyData.nodes,
+        links: topologyData.links,
+        metrics: topologyData.metrics,
       };
-      list.push({
-        id: n.id,
-        name: n.name,
-        code: n.code,
-        x: pos.x,
-        y: pos.y,
-        sector: n.sector || (n.id.startsWith('NODE-X') || n.id.startsWith('NODE-Y') ? 2 : 1),
-        isMaster: false,
+    }
+
+    // Otherwise, dynamically project from active nodes and sector masters locally
+    const allRawPoints: Array<{
+      id: string;
+      name: string;
+      code: string;
+      lat: number;
+      lng: number;
+      role: 'master' | 'node';
+      sector: number;
+      status: string;
+      meshHopCount: number;
+      parentNodeId?: string;
+      masterId?: string;
+      readings?: any;
+    }> = [];
+
+    SECTOR_MASTERS.forEach((m) => {
+      allRawPoints.push({
+        id: m.id,
+        name: m.name,
+        code: m.code,
+        lat: m.lat,
+        lng: m.lng,
+        role: 'master',
+        sector: m.sectorNum || 1,
+        status: m.status,
+        meshHopCount: 0,
       });
     });
 
-    return list;
-  }, [nodes]);
+    nodes.forEach((n) => {
+      allRawPoints.push({
+        id: n.id,
+        name: n.name,
+        code: n.code,
+        lat: n.lat || 23.7500,
+        lng: n.lng || 86.4200,
+        role: 'node',
+        sector: n.sector || (n.id.startsWith('NODE-X') || n.id.startsWith('NODE-Y') ? 2 : 1),
+        status: n.status || 'online',
+        meshHopCount: n.meshHopCount || 1,
+        parentNodeId: n.parentNodeId || undefined,
+        masterId: n.masterId || undefined,
+        readings: n.readings,
+      });
+    });
 
-  // Dynamic mesh routing links
-  const activeLinks = useMemo(() => {
-    const links: Array<{
-      id: string;
-      sourceId: string;
-      targetId: string;
-      rssiDbm: number;
-      protocol: 'wifi' | 'lora';
-      label: string;
-      isFailover?: boolean;
-    }> = [];
+    const lats = allRawPoints.map((p) => p.lat);
+    const lngs = allRawPoints.map((p) => p.lng);
 
-    // 1. Inter-Master LoRa Bridge (868MHz)
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+
+    const latSpan = Math.max(maxLat - minLat, 0.005);
+    const lngSpan = Math.max(maxLng - minLng, 0.005);
+
+    const mappedNodes: TopologyNode[] = allRawPoints.map((p) => {
+      // Longitude maps to X (100px to 900px)
+      const normX = 100 + ((p.lng - minLng) / lngSpan) * 800;
+      // Latitude maps to Y (Inverted: North at 80px, South at 430px)
+      const normY = 430 - ((p.lat - minLat) / latSpan) * 350;
+
+      let colorPrimary = '#22c55e'; // Emerald
+      let colorBorder = '#86efac';
+      let badgeLabel = 'POD';
+
+      if (p.role === 'master') {
+        colorPrimary = '#a855f7'; // Purple
+        colorBorder = '#d8b4fe';
+        badgeLabel = 'MASTER';
+      } else if (p.status === 'critical') {
+        colorPrimary = '#ef4444'; // Crimson
+        colorBorder = '#fca5a5';
+        badgeLabel = 'CRITICAL';
+      } else if (p.status === 'warning') {
+        colorPrimary = '#f59e0b'; // Amber
+        colorBorder = '#fde68a';
+        badgeLabel = 'WARNING';
+      }
+
+      return {
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        role: p.role,
+        sector: p.sector,
+        status: p.status,
+        lat: p.lat,
+        lng: p.lng,
+        x: Math.round(normX),
+        y: Math.round(normY),
+        colorPrimary,
+        colorBorder,
+        badgeLabel,
+        meshHopCount: p.meshHopCount,
+        parentNodeId: p.parentNodeId,
+        masterId: p.masterId,
+        readings: p.readings,
+      };
+    });
+
+    // Auto-generate mesh links
+    const links: any[] = [];
+
+    // Inter-Master LoRa Bridge
     links.push({
       id: 'L-MASTERS',
       sourceId: 'MASTER-S1',
       targetId: 'MASTER-S2',
+      protocol: 'LoRa 868MHz',
+      linkType: 'inter_master_lora',
       rssiDbm: -79,
-      protocol: 'lora',
+      packetLossPct: 0.0,
+      active: true,
+      color: '#c084fc',
       label: 'LoRa 868MHz Bridge (ACK Sync)',
     });
 
-    // 2. Multi-Hop Pod Mesh Links
-    nodes.forEach((node) => {
-      let targetId = node.parentNodeId || (node.sector === 2 ? 'MASTER-S2' : 'MASTER-S1');
+    mappedNodes.forEach((n) => {
+      if (n.role === 'master') return;
+      const targetId = n.parentNodeId || n.masterId || (n.sector === 2 ? 'MASTER-S2' : 'MASTER-S1');
+      links.push({
+        id: `link-${n.id}-${targetId}`,
+        sourceId: n.id,
+        targetId: targetId,
+        protocol: 'WiFi Mesh 2.4GHz',
+        linkType: targetId.startsWith('MASTER') ? 'mesh_direct' : 'mesh_multi_hop',
+        rssiDbm: n.readings?.rssiDbm ?? -70,
+        packetLossPct: 0.1,
+        active: n.status !== 'offline',
+        color: '#38bdf8',
+        label: `WiFi Mesh Hop ${n.meshHopCount || 1}`,
+      });
+    });
+
+    return {
+      nodes: mappedNodes,
+      links,
+      metrics: {
+        totalNodes: mappedNodes.length,
+        masterCount: 2,
+        linkCount: links.length,
+        packetDeliveryRate: 99.8,
+        avgHopCount: 1.4,
+        selfHealingStatus: 'Active',
+      },
+    };
+  }, [nodes, topologyData]);
+
+  // Position map lookup for SVG rendering
+  const nodePositionMap = useMemo(() => {
+    const map: Record<string, { x: number; y: number }> = {};
+    computedTopology.nodes.forEach((n) => {
+      map[n.id] = { x: n.x, y: n.y };
+    });
+    return map;
+  }, [computedTopology]);
+
+  // Dynamic active links with simulated failover rerouting
+  const activeLinks = useMemo(() => {
+    return computedTopology.links.map((link) => {
+      const isSrcDisabled = disabledNodeIds.includes(link.sourceId);
+      const isTgtDisabled = disabledNodeIds.includes(link.targetId);
+
+      let targetId = link.targetId;
       let isFailover = false;
 
-      // Failover rerouting simulation
-      if (disabledNodeIds.includes(targetId)) {
+      if (isTgtDisabled) {
         if (targetId === 'MASTER-S1') {
           targetId = 'MASTER-S2';
           isFailover = true;
@@ -182,48 +265,49 @@ export const MeshTopologyView: React.FC = () => {
         }
       }
 
-      links.push({
-        id: `link-${node.id}-${targetId}`,
-        sourceId: node.id,
-        targetId: targetId,
-        rssiDbm: node.readings?.rssiDbm ?? -70,
-        protocol: isFailover && targetId.startsWith('MASTER') ? 'lora' : 'wifi',
-        label: isFailover ? 'FAILOVER REROUTED' : 'WiFi Mesh 2.4GHz',
-        isFailover,
-      });
-    });
+      const isLinkActive = !isSrcDisabled && (!isTgtDisabled || isFailover);
 
-    return links;
-  }, [nodes, disabledNodeIds]);
+      return {
+        ...link,
+        targetId,
+        isFailover,
+        isLinkActive,
+      };
+    });
+  }, [computedTopology, disabledNodeIds]);
 
   const toggleNodeFailure = (id: string) => {
-    setDisabledNodeIds(prev => 
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    setDisabledNodeIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
-  const selectedMaster = SECTOR_MASTERS.find(m => m.id === selectedNodeId);
-  const selectedNode = nodes.find(n => n.id === selectedNodeId);
+  const selectedMaster = SECTOR_MASTERS.find((m) => m.id === selectedNodeId);
+  const selectedNode = computedTopology.nodes.find((n) => n.id === selectedNodeId);
 
   return (
     <div className="space-y-4 font-mono select-none">
-      {/* Top Filter & Network Stats Strip */}
+      {/* Top Filter & Automatic Network Summary Strip */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-[16px] border border-[#181b20] bg-[#0a0c0f] text-xs">
-        {/* Left: Health & Sync Pills */}
+        {/* Left: Health & Multi-tier Protocol Chips */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[#8b949e]">
-          <div className="flex items-center gap-1.5 text-white">
+          <div className="flex items-center gap-2 text-white">
             <Radio size={14} className="text-[#a3e635] animate-pulse" />
             <span className="font-bold">Dual-Tier Mesh:</span>
-            <span className="text-[#38bdf8]">WiFi 2.4GHz (Pods)</span>
-            <span>+</span>
-            <span className="text-[#c084fc]">LoRa 868MHz (RPi Masters)</span>
+            <span className="px-2 py-0.5 rounded bg-[#38bdf8]/15 text-[#38bdf8] font-bold border border-[#38bdf8]/30">
+              WiFi 2.4GHz (Pods)
+            </span>
+            <span className="text-[#64748b]">+</span>
+            <span className="px-2 py-0.5 rounded bg-[#a855f7]/15 text-[#c084fc] font-bold border border-[#a855f7]/30">
+              LoRa 868MHz (RPi Masters)
+            </span>
           </div>
-          <div className="hidden md:flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#22c55e]"></span>
+          <div className="hidden md:flex items-center gap-1.5 text-xs">
+            <span className="w-2 h-2 rounded-full bg-[#22c55e]" />
             <span>PDR: <strong className="text-white">99.8%</strong></span>
           </div>
-          <div className="hidden md:flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#38bdf8]"></span>
+          <div className="hidden md:flex items-center gap-1.5 text-xs">
+            <span className="w-2 h-2 rounded-full bg-[#38bdf8]" />
             <span>Avg Hop: <strong className="text-white">1.4 Hops</strong></span>
           </div>
         </div>
@@ -262,32 +346,37 @@ export const MeshTopologyView: React.FC = () => {
         {/* Left: SVG Topology Canvas */}
         <div className="lg:col-span-8 p-4 rounded-[18px] border border-[#181b20] bg-[#000000] shadow-2xl flex flex-col justify-between">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3 text-[11px] text-[#8b949e]">
-            <div className="flex items-center gap-3">
+            {/* Color-Coded Tactical Legend (NO EMOJIS) */}
+            <div className="flex flex-wrap items-center gap-3">
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-[#6b21a8] border border-[#e9d5ff] flex items-center justify-center text-[8px] text-white">⚡</span>
-                <span className="text-[#d8b4fe]">RPi 4 Master</span>
+                <span className="w-3 h-3 rounded-[3px] bg-[#a855f7] border border-[#d8b4fe]" />
+                <span className="text-[#d8b4fe] font-bold">RPi 4 Master Hub</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e]"></span>
-                <span className="text-white">ESP32-S3 Pod</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e]" />
+                <span className="text-white">Normal Pod</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444] animate-pulse"></span>
-                <span className="text-white">Critical Node</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]" />
+                <span className="text-[#f59e0b]">Elevated / Warning</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#475569]"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444] animate-pulse" />
+                <span className="text-[#ef4444]">Critical Breached</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#475569]" />
                 <span className="text-[#64748b]">Simulated Dead</span>
               </span>
             </div>
             <span className="text-[10px] text-[#555]">
-              Click any node to inspect telemetry or test failover
+              Dynamic GPS Auto-Projected
             </span>
           </div>
 
-          {/* SVG Map */}
+          {/* SVG Map Canvas */}
           <div className="relative w-full aspect-[16/10] bg-[#06080c] rounded-[14px] border border-[#161a22] overflow-hidden flex items-center justify-center">
-            {/* Background Grid Accent */}
+            {/* Tactical Grid Background */}
             <div 
               className="absolute inset-0 opacity-15 pointer-events-none"
               style={{
@@ -297,11 +386,13 @@ export const MeshTopologyView: React.FC = () => {
             />
 
             {/* Sector Cluster Labels */}
-            <div className="absolute top-3 left-6 text-[11px] font-bold text-[#38bdf8]/60 uppercase tracking-wider">
-              ◰ Sector 1 Mesh Cluster (North Ridge)
+            <div className="absolute top-3 left-6 text-[10px] font-bold text-[#38bdf8]/60 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
+              Sector 1 Cluster (North Overburden)
             </div>
-            <div className="absolute top-3 right-6 text-[11px] font-bold text-[#c084fc]/60 uppercase tracking-wider">
-              ◰ Sector 2 Mesh Cluster (East Highwall)
+            <div className="absolute top-3 right-6 text-[10px] font-bold text-[#c084fc]/60 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#c084fc]" />
+              Sector 2 Cluster (East Highwall)
             </div>
 
             <svg viewBox="0 0 1000 500" className="w-full h-full">
@@ -318,41 +409,42 @@ export const MeshTopologyView: React.FC = () => {
 
               {/* Draw Mesh Links */}
               {activeLinks.map((link) => {
-                const src = defaultPositions[link.sourceId];
-                const tgt = defaultPositions[link.targetId];
+                const src = nodePositionMap[link.sourceId];
+                const tgt = nodePositionMap[link.targetId];
                 if (!src || !tgt) return null;
 
-                const isSrcDisabled = disabledNodeIds.includes(link.sourceId);
-                const isTgtDisabled = disabledNodeIds.includes(link.targetId);
-                const isLinkActive = !isSrcDisabled && !isTgtDisabled;
+                const isLora = link.protocol.includes('LoRa');
+                if (protocolFilter === 'wifi' && isLora) return null;
+                if (protocolFilter === 'lora' && !isLora) return null;
 
-                if (protocolFilter === 'wifi' && link.protocol !== 'wifi') return null;
-                if (protocolFilter === 'lora' && link.protocol !== 'lora') return null;
-
-                const strokeColor = !isLinkActive ? '#262d3d' :
+                const strokeColor = !link.isLinkActive ? '#262d3d' :
                   link.isFailover ? '#f59e0b' :
-                  link.protocol === 'lora' ? '#c084fc' : '#38bdf8';
+                  isLora ? '#c084fc' : '#38bdf8';
 
                 return (
                   <g key={link.id}>
-                    {/* Background track */}
+                    {/* Background Line */}
                     <line
                       x1={src.x}
                       y1={src.y}
                       x2={tgt.x}
                       y2={tgt.y}
                       stroke={strokeColor}
-                      strokeWidth={link.protocol === 'lora' ? '2.5' : '1.8'}
-                      strokeDasharray={!isLinkActive ? '4,4' : link.protocol === 'lora' ? '6,6' : link.isFailover ? '5,5' : undefined}
-                      strokeOpacity={isLinkActive ? 0.75 : 0.25}
+                      strokeWidth={isLora ? '2.5' : '1.8'}
+                      strokeDasharray={!link.isLinkActive ? '4,4' : isLora ? '6,6' : link.isFailover ? '5,5' : undefined}
+                      strokeOpacity={link.isLinkActive ? 0.75 : 0.25}
                     />
 
-                    {/* Dynamic Moving Particle along active link */}
-                    {isLinkActive && (
-                      <circle r={link.protocol === 'lora' ? '4' : '3'} fill={strokeColor} filter={link.protocol === 'lora' ? 'url(#glow-lora-purple)' : 'url(#glow-wifi)'}>
+                    {/* Dynamic Moving Signal Packet */}
+                    {link.isLinkActive && (
+                      <circle 
+                        r={isLora ? '4' : '3'} 
+                        fill={strokeColor} 
+                        filter={isLora ? 'url(#glow-lora-purple)' : 'url(#glow-wifi)'}
+                      >
                         <animateMotion
                           path={`M ${src.x} ${src.y} L ${tgt.x} ${tgt.y}`}
-                          dur={`${link.protocol === 'lora' ? 2.2 : 1.6}s`}
+                          dur={`${isLora ? 2.2 : 1.6}s`}
                           repeatCount="indefinite"
                         />
                       </circle>
@@ -362,41 +454,27 @@ export const MeshTopologyView: React.FC = () => {
                     <text
                       x={(src.x + tgt.x) / 2}
                       y={(src.y + tgt.y) / 2 - 8}
-                      fill={isLinkActive ? (link.isFailover ? '#f59e0b' : 'rgba(255,255,255,0.6)') : '#475569'}
+                      fill={link.isLinkActive ? (link.isFailover ? '#f59e0b' : 'rgba(255,255,255,0.6)') : '#475569'}
                       fontSize="9"
                       fontFamily="monospace"
                       textAnchor="middle"
                       fontWeight="bold"
                     >
-                      {isLinkActive ? `${link.rssiDbm} dBm` : 'DISCONNECTED'}
+                      {link.isLinkActive ? `${link.rssiDbm} dBm` : 'DISCONNECTED'}
                     </text>
                   </g>
                 );
               })}
 
               {/* Draw Nodes & Master Hubs */}
-              {allNodesList.map((node) => {
-                const liveNode = nodes.find(n => n.id === node.id);
+              {computedTopology.nodes.map((node) => {
                 const isDisabled = disabledNodeIds.includes(node.id);
                 const isSelected = selectedNodeId === node.id;
-                
-                let fillColor = '#22c55e';
-                let strokeColor = '#22c55e';
-                let isCritical = false;
+                const isMaster = node.role === 'master';
+                const isCritical = node.status === 'critical';
 
-                if (node.isMaster) {
-                  fillColor = '#a855f7';
-                  strokeColor = '#e9d5ff';
-                } else if (liveNode) {
-                  if (liveNode.status === 'critical') {
-                    fillColor = '#ef4444';
-                    strokeColor = '#ef4444';
-                    isCritical = true;
-                  } else if (liveNode.status === 'warning') {
-                    fillColor = '#f59e0b';
-                    strokeColor = '#f59e0b';
-                  }
-                }
+                let strokeColor = node.colorBorder || '#22c55e';
+                let fillColor = node.colorPrimary || '#22c55e';
 
                 if (isDisabled) {
                   fillColor = '#1f293d';
@@ -409,7 +487,7 @@ export const MeshTopologyView: React.FC = () => {
                     className="cursor-pointer transition-all hover:scale-110"
                     onClick={() => setSelectedNodeId(node.id)}
                   >
-                    {/* Pulsing ring for critical nodes */}
+                    {/* Pulsing alert ring for critical nodes */}
                     {isCritical && !isDisabled && (
                       <circle
                         cx={node.x}
@@ -428,16 +506,16 @@ export const MeshTopologyView: React.FC = () => {
                       <circle
                         cx={node.x}
                         cy={node.y}
-                        r={node.isMaster ? '26' : '22'}
+                        r={isMaster ? '26' : '22'}
                         fill="none"
-                        stroke={node.isMaster ? '#c084fc' : '#a3e635'}
+                        stroke={isMaster ? '#c084fc' : '#a3e635'}
                         strokeWidth="2.5"
                         strokeDasharray="4,3"
                       />
                     )}
 
-                    {/* Master Square vs Pod Circle */}
-                    {node.isMaster ? (
+                    {/* Master Geometric Square vs Pod Circle */}
+                    {isMaster ? (
                       <rect
                         x={node.x - 16}
                         y={node.y - 16}
@@ -459,17 +537,18 @@ export const MeshTopologyView: React.FC = () => {
                       />
                     )}
 
-                    {/* Inner Indicator Pip / Icon */}
-                    {node.isMaster ? (
+                    {/* Inner Indicator / Tactile Code (NO EMOJIS) */}
+                    {isMaster ? (
                       <text
                         x={node.x}
                         y={node.y + 4}
-                        fill={isDisabled ? '#64748b' : '#ffffff'}
-                        fontSize="12"
-                        fontWeight="bold"
+                        fill={isDisabled ? '#64748b' : '#d8b4fe'}
+                        fontSize="10"
+                        fontWeight="900"
+                        fontFamily="monospace"
                         textAnchor="middle"
                       >
-                        ⚡
+                        HUB
                       </text>
                     ) : (
                       <circle
@@ -483,7 +562,7 @@ export const MeshTopologyView: React.FC = () => {
                     {/* Node ID Badge Label */}
                     <text
                       x={node.x}
-                      y={node.y + (node.isMaster ? 32 : 28)}
+                      y={node.y + (isMaster ? 32 : 28)}
                       fill={isDisabled ? '#64748b' : '#ffffff'}
                       fontSize="11"
                       fontWeight="bold"
@@ -514,7 +593,7 @@ export const MeshTopologyView: React.FC = () => {
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#8b949e]">
                 Mesh Node Inspector
               </span>
-              <span className="text-xs px-2 py-0.5 rounded bg-[#161a22] text-[#38bdf8] font-bold border border-[#232731]">
+              <span className="text-xs px-2.5 py-0.5 rounded bg-[#161a22] text-[#38bdf8] font-bold border border-[#232731]">
                 {selectedNodeId}
               </span>
             </div>
@@ -526,7 +605,7 @@ export const MeshTopologyView: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-[#c084fc] font-bold uppercase">Raspberry Pi 4 Master Hub</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#22c55e]/20 text-[#4ade80] font-bold border border-[#22c55e]/40">
-                      ● EDGE ONLINE
+                      EDGE ONLINE
                     </span>
                   </div>
                   <div className="text-sm font-bold text-white mt-1">{selectedMaster.name}</div>
@@ -545,7 +624,7 @@ export const MeshTopologyView: React.FC = () => {
                   <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#12161f]">
                     <span className="text-[10px] text-[#718096] block uppercase">GSM Cellular</span>
                     <span className="text-[#4ade80] font-bold text-[11px]">SIM7600 Direct</span>
-                    <span className="text-[9px] text-[#94a3b8] block">5/5 Bars • SMS Armed</span>
+                    <span className="text-[9px] text-[#94a3b8] block">5/5 Bars • SMS Ready</span>
                   </div>
 
                   <div className="p-2.5 rounded-lg border border-[#1e2430] bg-[#12161f]">
@@ -583,11 +662,13 @@ export const MeshTopologyView: React.FC = () => {
                       selectedNode.status === 'warning' ? 'bg-[#f59e0b]/20 text-[#f59e0b] border-[#f59e0b]/40' :
                       'bg-[#22c55e]/20 text-[#22c55e] border-[#22c55e]/40'
                     }`}>
-                      ● {selectedNode.status.toUpperCase()}
+                      {selectedNode.status.toUpperCase()}
                     </span>
                   </div>
                   <div className="text-sm font-bold text-white mt-1">{selectedNode.name}</div>
-                  <div className="text-[11px] text-[#94a3b8] mt-0.5">{selectedNode.zone}</div>
+                  <div className="text-[11px] text-[#94a3b8] mt-0.5">
+                    Lat: {selectedNode.lat.toFixed(4)}°N • Lng: {selectedNode.lng.toFixed(4)}°E
+                  </div>
                 </div>
 
                 {/* 2-Column Sensor Telemetry Tiles */}

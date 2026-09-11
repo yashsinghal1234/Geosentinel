@@ -89,9 +89,47 @@ export interface MeshLink {
   targetId: string;
   rssiDbm: number;
   packetLossPct: number;
-  protocol: 'WiFi Mesh' | 'ESP-NOW 2.4GHz' | 'LoRa (SX1278)' | 'LoRa 868MHz';
-  linkType?: 'mesh_leaf' | 'inter_master_lora' | 'master_uplink';
+  protocol: string;
+  linkType?: string;
   active: boolean;
+  color?: string;
+  label?: string;
+}
+
+export interface TopologyNode {
+  id: string;
+  name: string;
+  code: string;
+  role: 'master' | 'node';
+  sector: number;
+  status: string;
+  lat: number;
+  lng: number;
+  x: number;
+  y: number;
+  colorPrimary: string;
+  colorBorder: string;
+  badgeLabel: string;
+  meshHopCount: number;
+  parentNodeId?: string;
+  masterId?: string;
+  readings?: any;
+  data?: any;
+}
+
+export interface DynamicTopologyResponse {
+  status: string;
+  nodes: TopologyNode[];
+  links: MeshLink[];
+  masters: GatewayDevice[];
+  metrics: {
+    totalNodes: number;
+    masterCount: number;
+    linkCount: number;
+    packetDeliveryRate: number;
+    avgHopCount: number;
+    selfHealingStatus: string;
+  };
 }
 
 export interface GatewayDevice {
