@@ -12,10 +12,107 @@ import type {
   SimulationScenario, 
   UserRole, 
   SupportedLanguage,
-  AlertLevel
+  AlertLevel,
+  MineSite,
+  SectorInfo
 } from '../types';
 import { evaluateGeologicalRisk } from '../services/PhysicsEngine';
 import { audioService } from '../services/AudioService';
+
+export const AVAILABLE_MINES: MineSite[] = [
+  {
+    id: 'jharia-04',
+    name: 'Jharia Coalfield',
+    code: 'BCCL-JH-04',
+    location: 'Dhanbad, Jharkhand',
+    state: 'Jharkhand',
+    totalSensors: 42,
+    activeSectorsCount: 4,
+    overallRisk: 'Warning',
+  },
+  {
+    id: 'raniganj-02',
+    name: 'Raniganj Coalfield',
+    code: 'ECL-RG-02',
+    location: 'Asansol, West Bengal',
+    state: 'West Bengal',
+    totalSensors: 28,
+    activeSectorsCount: 3,
+    overallRisk: 'Advisory',
+  },
+  {
+    id: 'singrauli-01',
+    name: 'Singrauli Open-Cast',
+    code: 'NCL-SG-01',
+    location: 'Singrauli, Madhya Pradesh',
+    state: 'Madhya Pradesh',
+    totalSensors: 36,
+    activeSectorsCount: 4,
+    overallRisk: 'Normal',
+  },
+  {
+    id: 'korba-03',
+    name: 'Korba West Basin',
+    code: 'SECL-KB-03',
+    location: 'Korba, Chhattisgarh',
+    state: 'Chhattisgarh',
+    totalSensors: 24,
+    activeSectorsCount: 3,
+    overallRisk: 'Normal',
+  },
+];
+
+export const AVAILABLE_SECTORS: SectorInfo[] = [
+  {
+    id: 'all',
+    name: 'All Mine Sectors',
+    shortName: 'All Sectors',
+    description: 'Full perimeter telemetry across all deployed mesh sectors',
+    activeSensors: 42,
+    maxRiskScore: 76.6,
+    riskLevel: 'Warning',
+  },
+  {
+    id: '1',
+    sectorNum: 1,
+    name: 'Sector 1 (North Overburden Slope)',
+    shortName: 'Sector 1 (North)',
+    description: 'Upper bench steep face and overburden shear zone',
+    activeSensors: 14,
+    maxRiskScore: 40.9,
+    riskLevel: 'Advisory',
+  },
+  {
+    id: '2',
+    sectorNum: 2,
+    name: 'Sector 2 (East Highwall & Village Buffer)',
+    shortName: 'Sector 2 (East)',
+    description: 'Village residential buffer zone and highwall subsidence area',
+    activeSensors: 12,
+    maxRiskScore: 76.6,
+    riskLevel: 'Warning',
+  },
+  {
+    id: '3',
+    sectorNum: 3,
+    name: 'Sector 3 (South Tailings Embankment)',
+    shortName: 'Sector 3 (South)',
+    description: 'Slurry retention wall and hydro-pressurized piezometers',
+    activeSensors: 8,
+    maxRiskScore: 18.0,
+    riskLevel: 'Normal',
+  },
+  {
+    id: '4',
+    sectorNum: 4,
+    name: 'Sector 4 (West Haulage Bench)',
+    shortName: 'Sector 4 (West)',
+    description: 'Heavy machinery route, blast vibration and extensometer mesh',
+    activeSensors: 8,
+    maxRiskScore: 23.6,
+    riskLevel: 'Monitor',
+  },
+];
 
 // Initial 8 Sensor Nodes
 const INITIAL_NODES: SensorNode[] = [
@@ -475,6 +572,15 @@ interface GeoSentinelContextType {
   selectedNodeId: string | null;
   rainfallRate: number;
   audioMuted: boolean;
+
+  // Mine & Sector selection
+  selectedMine: string;
+  selectedSector: string;
+  availableMines: MineSite[];
+  availableSectors: SectorInfo[];
+  setSelectedMine: (mineId: string) => void;
+  setSelectedSector: (sectorId: string) => void;
+  filteredNodes: SensorNode[];
   
   // Auth state
   isAuthenticated: boolean;
@@ -515,6 +621,9 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
     badge: 'OPERATOR L3',
   });
 
+  const [selectedMine, setSelectedMine] = useState<string>('jharia-04');
+  const [selectedSector, setSelectedSector] = useState<string>('all');
+
   const [nodes, setNodes] = useState<SensorNode[]>(INITIAL_NODES);
 
   const [gateway, setGateway] = useState<GatewayDevice>(INITIAL_GATEWAY);
@@ -531,6 +640,15 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [rainfallRate, setRainfallRate] = useState<number>(4.2);
   const [audioMuted, setAudioMuted] = useState<boolean>(false);
   const [falseAlarmSuppression, setFalseAlarmSuppression] = useState<boolean>(false);
+
+  const filteredNodes = nodes.filter((n) => {
+    if (selectedSector === 'all') return true;
+    const secNum = parseInt(selectedSector, 10);
+    if ((n as any).sector !== undefined) {
+      return (n as any).sector == secNum;
+    }
+    return n.zone?.toLowerCase().includes(`sector ${selectedSector}`) || n.id.includes(`S${selectedSector}`) || n.name?.includes(`Sector ${selectedSector}`);
+  });
 
   const login = useCallback(async (email?: string, password?: string) => {
     try {
@@ -798,6 +916,13 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
         selectedNodeId,
         rainfallRate,
         audioMuted,
+        selectedMine,
+        selectedSector,
+        availableMines: AVAILABLE_MINES,
+        availableSectors: AVAILABLE_SECTORS,
+        setSelectedMine,
+        setSelectedSector,
+        filteredNodes,
         isAuthenticated,
         currentUser,
         isLoginModalOpen,

@@ -4,7 +4,6 @@ import {
   X, 
   ArrowRight 
 } from '../icons';
-import confetti from 'canvas-confetti';
 
 interface LoginModalProps {
   onClose?: () => void;
@@ -26,12 +25,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
     e.preventDefault();
     try {
       await login(email, password);
-      confetti({
-        particleCount: 60,
-        spread: 60,
-        origin: { y: 0.6 },
-        colors: ['#3fcb7f', '#ffffff', '#9984d8'],
-      });
     } catch (err) {
       // Error is handled by context alert
     }

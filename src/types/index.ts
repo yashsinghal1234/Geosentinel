@@ -175,3 +175,26 @@ export type SimulationScenario =
 
 export type UserRole = 'operator' | 'public' | 'admin';
 export type SupportedLanguage = 'en' | 'hi' | 'bn' | 'or' | 'sat';
+
+export interface MineSite {
+  id: string;
+  name: string;
+  code: string;
+  location: string;
+  state: string;
+  totalSensors: number;
+  activeSectorsCount: number;
+  overallRisk: 'Normal' | 'Monitor' | 'Advisory' | 'Warning' | 'Critical';
+}
+
+export interface SectorInfo {
+  id: string; // 'all' | '1' | '2' | '3' | '4'
+  name: string;
+  shortName: string;
+  sectorNum?: number;
+  description: string;
+  activeSensors: number;
+  maxRiskScore: number;
+  riskLevel: 'Normal' | 'Monitor' | 'Advisory' | 'Warning' | 'Critical';
+}
+
