@@ -118,7 +118,7 @@ export const TopNav: React.FC = () => {
         <div className="flex items-center gap-2 sm:gap-3">
           {/* GitHub 35k+ Pill Badge */}
           <a
-            href="https://github.com"
+            href="https://github.com/yashsinghal1234/Geosentinel"
             target="_blank"
             rel="noreferrer"
             className="hidden sm:flex items-center gap-2 rounded-full border border-[#262626] bg-[#0c0d0e] px-3.5 sm:px-4 py-1.5 text-[13px] sm:text-[14px] font-mono text-white/90 hover:border-[#444444] transition-colors cursor-pointer"
