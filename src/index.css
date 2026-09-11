@@ -76,9 +76,9 @@
   letter-spacing: -0.01em;
 }
 
-/* Custom Leaflet Dark Mode Tiles & Popups (Zero API Key & Zero Watermark) */
+/* Custom Leaflet Black Theme Tiles & Popups (Zero API Key & Zero Watermark) */
 .leaflet-container {
-  background: #111317 !important;
+  background: #000000 !important;
   font-family: var(--font-inter) !important;
   outline: none;
 }
@@ -87,15 +87,12 @@
 .leaflet-pane,
 .leaflet-layer,
 .leaflet-tile-container {
-  background: #111317 !important;
-}
-
-.leaflet-tile-esri-dark {
-  filter: brightness(95%) contrast(110%);
+  background: #000000 !important;
 }
 
 .leaflet-tile-dark {
-  filter: invert(90%) hue-rotate(190deg) brightness(80%) contrast(120%) saturate(25%) !important;
+  filter: invert(100%) hue-rotate(180deg) brightness(58%) contrast(145%) grayscale(60%) !important;
+  background: #000000 !important;
 }
 
 .leaflet-tile-satellite {
@@ -103,7 +100,8 @@
 }
 
 .leaflet-tile-street-dark {
-  filter: invert(90%) hue-rotate(190deg) brightness(85%) contrast(125%) saturate(35%) !important;
+  filter: invert(100%) hue-rotate(180deg) brightness(72%) contrast(135%) saturate(20%) !important;
+  background: #000000 !important;
 }
 
 .custom-leaflet-popup .leaflet-popup-content-wrapper {

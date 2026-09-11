@@ -68,8 +68,8 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
           url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
           className: 'leaflet-tile-satellite',
           subdomains: [] as string[],
-          maxZoom: 20,
-          maxNativeZoom: 17,
+          maxZoom: 19,
+          maxNativeZoom: 18,
           attribution: '© Esri World Imagery'
         };
       case 'street-dark':
@@ -77,19 +77,19 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
           url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
           className: 'leaflet-tile-street-dark',
           subdomains: ['a', 'b', 'c'],
-          maxZoom: 20,
-          maxNativeZoom: 16,
-          attribution: '© OpenStreetMap Dark'
+          maxZoom: 19,
+          maxNativeZoom: 19,
+          attribution: '© OpenStreetMap'
         };
       case 'dark':
       default:
         return {
-          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-          className: 'leaflet-tile-esri-dark',
-          subdomains: [] as string[],
-          maxZoom: 20,
-          maxNativeZoom: 16,
-          attribution: '© Esri Dark Gray'
+          url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          className: 'leaflet-tile-dark',
+          subdomains: ['a', 'b', 'c'],
+          maxZoom: 19,
+          maxNativeZoom: 19,
+          attribution: '© OpenStreetMap Tactical Dark'
         };
     }
   };
@@ -104,7 +104,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
       center: mapCenter,
       zoom: 16,
       minZoom: 10,
-      maxZoom: 20,
+      maxZoom: 19,
       zoomControl: false,
       attributionControl: false,
     });
