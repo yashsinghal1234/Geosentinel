@@ -3,9 +3,6 @@ import L from 'leaflet';
 import { useGeoSentinel } from '../../context/GeoSentinelContext';
 import type { SensorNode } from '../../types';
 import { 
-  Play, 
-  Pause, 
-  RotateCcw,
   MapPin
 } from '../icons';
 
@@ -55,10 +52,6 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
   const [showMineWorkings, setShowMineWorkings] = useState<boolean>(true);
   const [showCrackPins, setShowCrackPins] = useState<boolean>(true);
   const [showShelters, setShowShelters] = useState<boolean>(true);
-
-  // Time scrubber state (0 = -24h, 100 = Present/Live)
-  const [timelinePos, setTimelinePos] = useState<number>(100);
-  const [isPlayingTimeline, setIsPlayingTimeline] = useState<boolean>(false);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -146,24 +139,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     }
   }, [basemapType]);
 
-  // 3. Timeline Playback Loop
-  useEffect(() => {
-    let timer: ReturnType<typeof setInterval>;
-    if (isPlayingTimeline) {
-      timer = setInterval(() => {
-        setTimelinePos((prev) => {
-          if (prev >= 100) {
-            setIsPlayingTimeline(false);
-            return 100;
-          }
-          return prev + 2;
-        });
-      }, 100);
-    }
-    return () => clearInterval(timer);
-  }, [isPlayingTimeline]);
-
-  // 4. Render All Map Layers & Data (Heatmap Plumes, Status Nodes, Chips, Polygons)
+  // 3. Render All Map Layers & Data (Heatmap Plumes, Status Nodes, Chips, Polygons)
   useEffect(() => {
     const map = mapInstanceRef.current;
     const group = overlayGroupRef.current;
@@ -171,19 +147,17 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
 
     group.clearLayers();
 
-    const timeScale = timelinePos / 100; // 0.0 to 1.0
-
     // A. RENDER SMOOTH LAYERED RISK HEATMAP PLUMES (Weather-Radar Multi-Stop Gradient)
     if (showHeatmap) {
       // Hotspot 1: Sector 4 Village Slope & Highwall (Epicenter)
-      const primaryRadius = Math.max(80, 260 * timeScale);
+      const primaryRadius = 260;
       
       // Outer Gradient Ring (Low / Advisory Zone: Emerald to Lime)
       L.circle([23.7482, 86.4195], {
         radius: primaryRadius,
         stroke: false,
         fillColor: '#84cc16',
-        fillOpacity: 0.12 * timeScale,
+        fillOpacity: 0.14,
         className: 'pointer-events-none',
       }).addTo(group);
 
@@ -192,7 +166,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
         radius: primaryRadius * 0.65,
         stroke: false,
         fillColor: '#f97316',
-        fillOpacity: 0.22 * timeScale,
+        fillOpacity: 0.24,
         className: 'pointer-events-none',
       }).addTo(group);
 
@@ -204,17 +178,17 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
         weight: 1,
         dashArray: '4, 4',
         fillColor: '#ef4444',
-        fillOpacity: 0.38 * timeScale,
+        fillOpacity: 0.40,
         className: 'pointer-events-none',
       }).addTo(group);
 
       // Hotspot 2: Sector 3 Abandoned Gallery / Extensometer Zone
-      const secondaryRadius = Math.max(60, 190 * timeScale);
+      const secondaryRadius = 190;
       L.circle([23.7450, 86.4150], {
         radius: secondaryRadius,
         stroke: false,
         fillColor: '#eab308',
-        fillOpacity: 0.15 * timeScale,
+        fillOpacity: 0.16,
         className: 'pointer-events-none',
       }).addTo(group);
 
@@ -222,7 +196,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
         radius: secondaryRadius * 0.45,
         stroke: false,
         fillColor: '#f97316',
-        fillOpacity: 0.30 * timeScale,
+        fillOpacity: 0.32,
         className: 'pointer-events-none',
       }).addTo(group);
     }
@@ -237,7 +211,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
       ];
 
       L.polygon(galleryCoords, {
-        color: '#64748b', // Muted slate border (not harsh purple)
+        color: '#64748b',
         weight: 1.5,
         dashArray: '6, 6',
         fillColor: '#334155',
@@ -466,7 +440,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
       });
     }
 
-  }, [nodes, reports, assemblyPoints, rainfallRate, showHeatmap, showNodes, showMineWorkings, showCrackPins, showShelters, timelinePos]);
+  }, [nodes, reports, assemblyPoints, rainfallRate, showHeatmap, showNodes, showMineWorkings, showCrackPins, showShelters]);
 
   return (
     <div className="space-y-4 select-none">
@@ -587,49 +561,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
           </div>
         </div>
       </div>
-
-      {/* 3. TIMELINE SCRUBBER CONTROLLER */}
-      <div className="p-4 rounded-[16px] border border-[#181b20] bg-[#0a0c0f] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <button
-            onClick={() => setIsPlayingTimeline(!isPlayingTimeline)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-[#2d3139] bg-[#14171d] hover:bg-[#1f232b] text-white font-medium cursor-pointer transition-colors"
-          >
-            {isPlayingTimeline ? <Pause size={14} className="text-[#f59e0b]" /> : <Play size={14} className="text-[#a3e635]" />}
-            <span>{isPlayingTimeline ? 'Pause Playback' : 'Simulate 24h'}</span>
-          </button>
-          
-          <button
-            onClick={() => {
-              setIsPlayingTimeline(false);
-              setTimelinePos(100);
-            }}
-            className="p-2 rounded-lg border border-[#23272f] bg-[#14171d] hover:bg-[#1f232b] text-[#888] hover:text-white cursor-pointer transition-colors"
-            title="Reset to Live"
-          >
-            <RotateCcw size={14} />
-          </button>
-        </div>
-
-        {/* Range Slider */}
-        <div className="flex-1 w-full flex items-center gap-3">
-          <span className="text-[11px] text-[#717682] whitespace-nowrap">-24 Hours</span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={timelinePos}
-            onChange={(e) => {
-              setIsPlayingTimeline(false);
-              setTimelinePos(Number(e.target.value));
-            }}
-            className="w-full accent-[#a3e635] h-1.5 bg-[#1f232b] rounded-lg cursor-pointer"
-          />
-          <span className={`text-[11px] whitespace-nowrap font-bold ${timelinePos === 100 ? 'text-[#a3e635]' : 'text-white'}`}>
-            {timelinePos === 100 ? 'LIVE PRESENT' : `T - ${Math.round(24 * (1 - timelinePos / 100))}h`}
-          </span>
-        </div>
-      </div>
     </div>
   );
 };
+
