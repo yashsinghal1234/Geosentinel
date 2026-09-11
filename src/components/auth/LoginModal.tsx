@@ -104,7 +104,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
               onClick={() => {
                 setError(null);
                 setEmail('admin@geo.com');
-                setPassword('password123');
+                setPassword('282007@aA');
               }}
               className="flex flex-col items-start p-2.5 rounded-[8px] border border-[#262626] bg-[#0c0d0e] hover:border-[#3fcb7f]/50 hover:bg-[#121416] transition-all text-left group cursor-pointer"
             >
@@ -113,7 +113,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
                 <span>DGMS Admin</span>
               </div>
               <span className="text-[10px] font-mono text-[#888888] truncate w-full">admin@geo.com</span>
-              <span className="text-[9px] font-mono text-[#555555]">pass: password123</span>
+              <span className="text-[9px] font-mono text-[#555555]">pass: 282007@aA</span>
             </button>
 
             <button

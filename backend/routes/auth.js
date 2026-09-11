@@ -106,7 +106,7 @@ router.get('/credentials-hint', (req, res) => {
     admin: {
       email: 'admin@geo.com',
       username: 'admin@geo.com',
-      password: 'password123',
+      password: '282007@aA',
       role: 'admin',
       name: 'Directorate General (DGMS Admin)'
     },

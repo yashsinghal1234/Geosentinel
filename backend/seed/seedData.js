@@ -42,7 +42,7 @@ const DEFAULT_USERS = [
     email: 'admin@geo.com',
     name: 'Directorate General (DGMS Admin)',
     role: 'admin',
-    password: 'password123',
+    password: '282007@aA',
     badge: 'ADMIN L4'
   },
   {
@@ -50,7 +50,7 @@ const DEFAULT_USERS = [
     email: 'admin@geo.com',
     name: 'System Administrator',
     role: 'admin',
-    password: 'password123',
+    password: '282007@aA',
     badge: 'ADMIN L4'
   },
   {

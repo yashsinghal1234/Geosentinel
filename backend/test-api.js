@@ -55,11 +55,11 @@ async function runTests() {
 
   // 4. Valid Admin Login
   let adminToken = '';
-  await test('POST /api/auth/login (admin@geo.com / password123)', async () => {
+  await test('POST /api/auth/login (admin@geo.com / 282007@aA)', async () => {
     const res = await fetch('http://localhost:8000/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'admin@geo.com', password: 'password123' })
+      body: JSON.stringify({ email: 'admin@geo.com', password: '282007@aA' })
     });
     const data = await res.json();
     if (!res.ok || data.status !== 'success' || data.role !== 'admin' || !data.access_token) {
