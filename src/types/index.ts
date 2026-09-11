@@ -209,9 +209,13 @@ export interface CitizenCrackReport {
   crackWidthEstimateMm: number;
   photoUrl: string;
   description: string;
+  severity?: string;
   status: 'Pending Review' | 'Corroborated & Approved' | 'Dismissed (Non-critical)';
   reviewedBy?: string;
   reviewNotes?: string;
+  nearestSensorId?: string;
+  nearestSensorDistanceM?: number;
+  aiCorroborationConfidence?: number;
 }
 
 export interface EvacuationAssemblyPoint {

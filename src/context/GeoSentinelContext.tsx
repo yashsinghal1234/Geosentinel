@@ -447,6 +447,11 @@ const INITIAL_LINKS: MeshLink[] = [
   { id: 'L-MASTER', sourceId: 'MASTER-S1', targetId: 'MASTER-S2', rssiDbm: -79, packetLossPct: 0.0, protocol: 'LoRa (SX1278)', linkType: 'inter_master_lora', active: true },
 ];
 
+// Reliable SVG Geological Fissure Patterns (Never 404)
+export const SVG_CRACK_SOIL = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%2312151c'/><path d='M30 40 Q 110 90, 160 140 T 260 210 T 370 260' stroke='%2338bdf8' stroke-width='4' fill='none'/><path d='M160 140 Q 190 90, 240 70' stroke='%2338bdf8' stroke-width='2.5' fill='none' stroke-dasharray='4,2'/><circle cx='160' cy='140' r='5' fill='%23ef4444'/><text x='20' y='280' fill='%2394a3b8' font-family='sans-serif' font-size='12'>SOIL SHEAR FISSURE • SECTOR 4</text></svg>";
+export const SVG_CRACK_WALL = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%231a141f'/><path d='M60 20 L 120 110 L 90 180 L 150 280' stroke='%23f59e0b' stroke-width='5' fill='none'/><path d='M120 110 L 220 130 L 310 160' stroke='%23f59e0b' stroke-width='3' fill='none'/><circle cx='120' cy='110' r='6' fill='%23ef4444'/><text x='20' y='280' fill='%23d8b4fe' font-family='sans-serif' font-size='12'>MASONRY WALL SEPARATION • SECTOR 3</text></svg>";
+export const SVG_CRACK_ROAD = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%230f141a'/><path d='M20 150 Q 140 140, 220 160 T 380 145' stroke='%23ef4444' stroke-width='6' fill='none'/><path d='M220 160 Q 250 80, 290 30' stroke='%23f87171' stroke-width='3' fill='none'/><circle cx='220' cy='160' r='6' fill='%23ef4444'/><text x='20' y='280' fill='%23cbd5e1' font-family='sans-serif' font-size='12'>ROADWAY EMBANKMENT CRACK • SECTOR 2</text></svg>";
+
 // Initial Citizen Crack Reports
 const INITIAL_REPORTS: CitizenCrackReport[] = [
   {
@@ -455,15 +460,19 @@ const INITIAL_REPORTS: CitizenCrackReport[] = [
     phone: '+91 94311 88421',
     timestamp: '28 mins ago',
     timeEpoch: Date.now() - 28 * 60 * 1000,
-    lat: 23.7490,
-    lng: 86.4210,
+    lat: 23.7482,
+    lng: 86.4215,
     zone: 'Sector 4 (Village Slope)',
     crackWidthEstimateMm: 9,
-    photoUrl: 'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&w=600&q=80',
+    photoUrl: SVG_CRACK_SOIL,
     description: 'Ground crack running across courtyard near primary school, expanded overnight.',
+    severity: 'Moderate Shear Fissure',
     status: 'Corroborated & Approved',
     reviewedBy: 'Chief Geologist R. V. Sharma',
-    reviewNotes: 'Matches SN-05 extensometer displacement trend. Corroborated.',
+    reviewNotes: 'Matches SN-04 extensometer displacement trend (+1.8mm/hr). Corroborated.',
+    nearestSensorId: 'NODE-D',
+    nearestSensorDistanceM: 145.0,
+    aiCorroborationConfidence: 94.2
   },
   {
     id: 'CR-802',
@@ -475,11 +484,15 @@ const INITIAL_REPORTS: CitizenCrackReport[] = [
     lng: 86.4168,
     zone: 'Sector 3 (Abandoned Gallery)',
     crackWidthEstimateMm: 16,
-    photoUrl: 'https://images.unsplash.com/photo-1578328819058-b69f3a3b0f6b?auto=format&fit=crop&w=600&q=80',
+    photoUrl: SVG_CRACK_WALL,
     description: 'Wall splitting along eastern foundation of pump house adjacent to old incline.',
+    severity: 'Severe Subsidence Crack',
     status: 'Corroborated & Approved',
     reviewedBy: 'Mine Safety Inspector T. Sen',
-    reviewNotes: 'Close to SN-03; high shear zone verified.',
+    reviewNotes: 'Close to SN-03 void gallery; high shear zone verified.',
+    nearestSensorId: 'NODE-C',
+    nearestSensorDistanceM: 88.0,
+    aiCorroborationConfidence: 98.7
   },
   {
     id: 'CR-803',
@@ -491,9 +504,13 @@ const INITIAL_REPORTS: CitizenCrackReport[] = [
     lng: 86.4245,
     zone: 'Sector 2 (Riverbank Overburden)',
     crackWidthEstimateMm: 4,
-    photoUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&w=600&q=80',
-    description: 'Superficial soil drying cracks observed on road embankment.',
+    photoUrl: SVG_CRACK_ROAD,
+    description: 'Superficial soil drying cracks observed on road embankment after blast cycle.',
+    severity: 'Minor Surface Tension',
     status: 'Pending Review',
+    nearestSensorId: 'NODE-B',
+    nearestSensorDistanceM: 210.0,
+    aiCorroborationConfidence: 76.5
   },
 ];
 
@@ -881,30 +898,88 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
     setFalseAlarmSuppression(true);
   }, [triggerEdgeSiren]);
 
-  const submitCrackReport = useCallback((reportData: Omit<CitizenCrackReport, 'id' | 'timestamp' | 'timeEpoch' | 'status'>) => {
-    const newReport: CitizenCrackReport = {
+  const submitCrackReport = useCallback(async (reportData: Omit<CitizenCrackReport, 'id' | 'timestamp' | 'timeEpoch' | 'status'>) => {
+    const tempId = `CR-${Math.floor(804 + Math.random() * 100)}`;
+    const optimisticReport: CitizenCrackReport = {
       ...reportData,
-      id: `CR-${Math.floor(800 + Math.random() * 200)}`,
+      id: tempId,
       timestamp: 'Just now',
       timeEpoch: Date.now(),
       status: 'Pending Review',
     };
-    setReports((prev) => [newReport, ...prev]);
+    setReports((prev) => [optimisticReport, ...prev]);
+
+    // Send to backend API
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reporter_name: reportData.reporterName,
+          phone: reportData.phone,
+          zone: reportData.zone,
+          latitude: reportData.lat,
+          longitude: reportData.lng,
+          crack_width_estimate_mm: reportData.crackWidthEstimateMm,
+          photo_url: reportData.photoUrl,
+          description: reportData.description,
+          severity: reportData.severity,
+        }),
+      });
+
+      if (res.ok) {
+        const saved = await res.json();
+        if (saved && saved.id) {
+          setReports((prev) =>
+            prev.map((r) =>
+              r.id === tempId
+                ? {
+                    ...r,
+                    id: saved.id,
+                    severity: saved.severity,
+                    nearestSensorId: saved.nearest_sensor_id,
+                    nearestSensorDistanceM: saved.nearest_sensor_distance_m,
+                    aiCorroborationConfidence: saved.ai_corroboration_confidence,
+                  }
+                : r
+            )
+          );
+        }
+      }
+    } catch (err) {
+      console.warn('Backend crack report submission fallback active:', err);
+    }
   }, []);
 
-  const reviewCrackReport = useCallback((reportId: string, approved: boolean, reviewNotes: string) => {
+  const reviewCrackReport = useCallback(async (reportId: string, approved: boolean, reviewNotes: string) => {
+    // Optimistic UI update
     setReports((prev) =>
       prev.map((r) =>
         r.id === reportId
           ? {
               ...r,
               status: approved ? 'Corroborated & Approved' : 'Dismissed (Non-critical)',
-              reviewedBy: 'Operator on Duty (Shift A)',
+              reviewedBy: 'DGMS Mining Safety Inspector',
               reviewNotes,
             }
           : r
       )
     );
+
+    // Call backend
+    try {
+      await fetch(`/api/reports/${reportId}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: approved ? 'approve' : 'dismiss',
+          review_notes: reviewNotes,
+          reviewed_by: 'DGMS Mining Safety Inspector',
+        }),
+      });
+    } catch (err) {
+      console.warn('Review report backend sync note:', err);
+    }
   }, []);
 
   const submitCheckIn = useCallback((checkInData: Omit<CommunityCheckIn, 'id' | 'timestamp'>) => {
@@ -995,7 +1070,55 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
     fetchNodes();
     const interval = setInterval(fetchNodes, 3000);
 
-    return () => clearInterval(interval);
+    // Initial and periodic fetch for citizen reports
+    const fetchReports = async () => {
+      try {
+        const res = await fetch('/api/reports');
+        if (res.ok) {
+          const text = await res.text();
+          if (text) {
+            try {
+              const data = JSON.parse(text);
+              if (Array.isArray(data) && data.length > 0) {
+                const normalizedReports: CitizenCrackReport[] = data.map((r: any) => ({
+                  id: r.id || r._id || `CR-${Math.floor(Math.random() * 900)}`,
+                  reporterName: r.reporter_name || r.reporterName || 'Anonymous Resident',
+                  phone: r.phone || '+91 94311 00000',
+                  timestamp: r.submitted_at || r.timestamp || 'Recent',
+                  timeEpoch: r.time_epoch || r.timeEpoch || Date.now(),
+                  lat: typeof r.latitude === 'number' ? r.latitude : (r.lat || 23.7482),
+                  lng: typeof r.longitude === 'number' ? r.longitude : (r.lng || 86.4215),
+                  zone: r.zone || 'Sector 4 (Village Slope)',
+                  crackWidthEstimateMm: r.crack_width_estimate_mm ?? r.crackWidthEstimateMm ?? 8.0,
+                  photoUrl: r.photo_url || r.photoUrl || SVG_CRACK_SOIL,
+                  description: r.description || 'Ground crack observation.',
+                  severity: r.severity || (r.crack_width_estimate_mm >= 15 ? 'Severe Subsidence Crack' : 'Moderate Shear Fissure'),
+                  status: r.status || 'Pending Review',
+                  reviewedBy: r.reviewed_by || r.reviewedBy,
+                  reviewNotes: r.review_notes || r.reviewNotes,
+                  nearestSensorId: r.nearest_sensor_id || r.nearestSensorId,
+                  nearestSensorDistanceM: r.nearest_sensor_distance_m ?? r.nearestSensorDistanceM,
+                  aiCorroborationConfidence: r.ai_corroboration_confidence ?? r.aiCorroborationConfidence,
+                }));
+                setReports(normalizedReports);
+              }
+            } catch (e) {
+              // Ignore non-json
+            }
+          }
+        }
+      } catch (err) {
+        // Keep initial reports
+      }
+    };
+
+    fetchReports();
+    const reportsInterval = setInterval(fetchReports, 5000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(reportsInterval);
+    };
   }, []);
 
   // Recalculate Risk whenever nodes, rainfall, or scenario changes
