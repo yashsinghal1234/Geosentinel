@@ -48,8 +48,8 @@ export const calculateNodeStatus = (node: SensorNode): 'critical' | 'warning' | 
 export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
   const { nodes, reports, assemblyPoints, rainfallRate } = useGeoSentinel();
 
-  // Layer Toggles
-  const [basemapType, setBasemapType] = useState<'dark' | 'satellite'>('dark');
+  // Layer Toggles: 'dark' (Esri Dark Gray), 'osm' (OSM Inverted Dark), 'satellite' (Esri Satellite)
+  const [basemapType, setBasemapType] = useState<'dark' | 'osm' | 'satellite'>('dark');
   const [showHeatmap, setShowHeatmap] = useState<boolean>(true);
   const [showNodes, setShowNodes] = useState<boolean>(true);
   const [showMineWorkings, setShowMineWorkings] = useState<boolean>(true);
@@ -68,6 +68,30 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
   // Center Coordinates: Jharia Coalfield Sector 4 / Open Pit
   const mapCenter = useMemo<[number, number]>(() => [23.7482, 86.4195], []);
 
+  const getTileConfig = (type: 'dark' | 'osm' | 'satellite') => {
+    switch (type) {
+      case 'satellite':
+        return {
+          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          className: '',
+          maxZoom: 19
+        };
+      case 'osm':
+        return {
+          url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          className: 'leaflet-tile-dark',
+          maxZoom: 19
+        };
+      case 'dark':
+      default:
+        return {
+          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+          className: '',
+          maxZoom: 19
+        };
+    }
+  };
+
   // 1. Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -85,14 +109,10 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     // Custom Zoom control at bottom right
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Default Dark Matter Tile Layer
-    const tileUrl = basemapType === 'satellite'
-      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-      : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-
-    const tiles = L.tileLayer(tileUrl, {
-      maxZoom: 19,
-      subdomains: 'abcd',
+    const config = getTileConfig(basemapType);
+    const tiles = L.tileLayer(config.url, {
+      maxZoom: config.maxZoom,
+      className: config.className,
     }).addTo(map);
 
     tileLayerRef.current = tiles;
@@ -113,14 +133,17 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     };
   }, []);
 
-  // 2. Switch Basemap (Dark Technical vs Satellite)
+  // 2. Switch Basemap (Dark Technical vs Detailed vs Satellite)
   useEffect(() => {
     if (!mapInstanceRef.current || !tileLayerRef.current) return;
-    const tileUrl = basemapType === 'satellite'
-      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-      : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-
-    tileLayerRef.current.setUrl(tileUrl);
+    const config = getTileConfig(basemapType);
+    tileLayerRef.current.setUrl(config.url);
+    
+    // Update className for CSS filtering if needed
+    const container = tileLayerRef.current.getContainer();
+    if (container) {
+      container.className = `leaflet-tile-container leaflet-zoom-animated ${config.className}`;
+    }
   }, [basemapType]);
 
   // 3. Timeline Playback Loop
@@ -502,20 +525,28 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
           </label>
         </div>
 
-        {/* Basemap Style Toggle: Dark Technical vs Satellite Imagery */}
+        {/* Basemap Style Toggle: Zero Watermark Esri Dark Canvas / OSM / Satellite */}
         <div className="flex items-center gap-1.5 p-1 rounded-lg border border-[#232731] bg-[#121418]">
           <button
             onClick={() => setBasemapType('dark')}
             className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer ${
-              basemapType === 'dark' ? 'bg-[#22262f] text-white font-bold' : 'text-[#717682] hover:text-white'
+              basemapType === 'dark' ? 'bg-[#22262f] text-[#a3e635] font-bold' : 'text-[#717682] hover:text-white'
             }`}
           >
-            Dark Technical
+            Dark Canvas
+          </button>
+          <button
+            onClick={() => setBasemapType('osm')}
+            className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+              basemapType === 'osm' ? 'bg-[#22262f] text-[#a3e635] font-bold' : 'text-[#717682] hover:text-white'
+            }`}
+          >
+            OSM Roads
           </button>
           <button
             onClick={() => setBasemapType('satellite')}
             className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer ${
-              basemapType === 'satellite' ? 'bg-[#22262f] text-white font-bold' : 'text-[#717682] hover:text-white'
+              basemapType === 'satellite' ? 'bg-[#22262f] text-[#a3e635] font-bold' : 'text-[#717682] hover:text-white'
             }`}
           >
             Satellite

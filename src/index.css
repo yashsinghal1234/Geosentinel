@@ -76,6 +76,25 @@
   letter-spacing: -0.01em;
 }
 
+/* Custom Leaflet Dark Mode Tiles & Popups (Zero API Key & Zero Watermark) */
+.leaflet-tile-dark {
+  filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(95%);
+}
+
+.custom-leaflet-popup .leaflet-popup-content-wrapper {
+  background: #0a0c0f !important;
+  color: #ffffff !important;
+  border: 1px solid #232731 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.9) !important;
+  padding: 0 !important;
+}
+
+.custom-leaflet-popup .leaflet-popup-tip {
+  background: #0a0c0f !important;
+  border: 1px solid #232731 !important;
+}
+
 .font-editorial-quote {
   font-family: var(--font-iowan-old-style);
   font-size: 24px;
