@@ -526,6 +526,11 @@ const InMemoryStore = {
 };
 
 async function seedAllData() {
+  const { getIsMock } = require('../config/db');
+  if (getIsMock()) {
+    console.log('⚡ Resilient in-memory database store ready with default users and sensor mesh.');
+    return;
+  }
   try {
     // 1. Seed Users
     for (const u of DEFAULT_USERS) {

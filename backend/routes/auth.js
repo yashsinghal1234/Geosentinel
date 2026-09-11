@@ -1,28 +1,29 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { generateToken, requireAuth } = require('../middleware/auth');
 const { DEFAULT_USERS, InMemoryStore, seedAllData } = require('../seed/seedData');
 const { getIsMock } = require('../config/db');
 
-// 1. POST /api/auth/login
+// 1. POST /api/auth/login - Strict Database Authentication
 router.post('/login', async (req, res) => {
   try {
-    let { email, username, password } = req.body || {};
+    const { email, username, password } = req.body || {};
     const inputUser = (email || username || '').trim();
     const inputPass = (password || '').trim();
 
     if (!inputUser || !inputPass) {
       return res.status(400).json({
         status: 'error',
-        message: 'Username/Email and Password are required.'
+        message: 'Both Email/Username and Password are required.'
       });
     }
 
     let userDoc = null;
     const isMock = getIsMock();
 
-    // Query MongoDB if active
+    // 1. Query MongoDB if connected
     if (!isMock) {
       try {
         userDoc = await User.findOne({
@@ -36,71 +37,39 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    // Check InMemoryStore if not found in MongoDB or if in mock mode
+    // 2. Query InMemoryStore if not in MongoDB or in offline mode
     if (!userDoc) {
       userDoc = InMemoryStore.users.find(
         u => u.email.toLowerCase() === inputUser.toLowerCase() || u.username.toLowerCase() === inputUser.toLowerCase()
       );
     }
 
-    // If still not found, check if it matches one of our predefined system defaults
+    // 3. If user is NOT found in database, REJECT immediately (NO AUTO-CREATION)
     if (!userDoc) {
-      const matchedDefault = DEFAULT_USERS.find(
-        u => u.email.toLowerCase() === inputUser.toLowerCase() || u.username.toLowerCase() === inputUser.toLowerCase()
-      );
-
-      const role = matchedDefault
-        ? matchedDefault.role
-        : (inputUser.toLowerCase().includes('admin') || inputUser.toLowerCase().includes('geo.com') ? 'admin' : 'operator');
-
-      const name = matchedDefault
-        ? matchedDefault.name
-        : (role === 'admin' ? 'Directorate General (DGMS Admin)' : 'S. K. Verma (Chief Mining Safety Engineer)');
-
-      const badge = matchedDefault ? matchedDefault.badge : (role === 'admin' ? 'ADMIN L4' : 'OPERATOR L3');
-
-      const newUserObj = {
-        username: inputUser,
-        email: inputUser.includes('@') ? inputUser : `${inputUser}@geosentinel.gov.in`,
-        name,
-        role,
-        badge,
-      };
-
-      if (!isMock) {
-        try {
-          const hash = await User.hashPassword(inputPass);
-          userDoc = await User.create({
-            ...newUserObj,
-            password_hash: hash,
-          });
-        } catch (createErr) {
-          userDoc = newUserObj;
-        }
-      } else {
-        userDoc = newUserObj;
-        InMemoryStore.users.push(userDoc);
-      }
-    } else {
-      // Validate password
-      let isValid = false;
-      if (typeof userDoc.comparePassword === 'function') {
-        isValid = await userDoc.comparePassword(inputPass);
-      } else {
-        // Default passwords accepted
-        const defaultAccepted = ['password123', 'admin123', 'admin', 'password', 'operator123', 'geosentinel', 'jharia2026'];
-        isValid = defaultAccepted.includes(inputPass) || inputPass === userDoc.password || inputPass === 'password123';
-      }
-
-      if (!isValid) {
-        return res.status(401).json({
-          status: 'error',
-          message: 'Incorrect credentials. Please verify your email and password.'
-        });
-      }
+      return res.status(401).json({
+        status: 'error',
+        message: `Account '${inputUser}' not found in database. Please use registered credentials (e.g. admin@geo.com / password123).`
+      });
     }
 
-    // Generate JWT Token
+    // 4. Strict Password Verification
+    let isPasswordValid = false;
+    if (typeof userDoc.comparePassword === 'function') {
+      isPasswordValid = await userDoc.comparePassword(inputPass);
+    } else if (userDoc.password_hash) {
+      isPasswordValid = await bcrypt.compare(inputPass, userDoc.password_hash);
+    } else if (userDoc.password) {
+      isPasswordValid = inputPass === userDoc.password;
+    }
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Incorrect password. Access denied.'
+      });
+    }
+
+    // 5. Generate secure JWT token
     const token = generateToken(userDoc);
 
     return res.status(200).json({

@@ -50,6 +50,7 @@ async function connectDB() {
   } catch (err) {
     console.warn(`⚠️ MongoDB note (${err.message}). Running with high-resilience in-memory store for offline/edge operation.`);
     isMock = true;
+    mongoose.set('bufferCommands', false);
   }
 
   return { isMock, connection: mongoose.connection };

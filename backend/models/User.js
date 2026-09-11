@@ -49,28 +49,13 @@ const UserSchema = new mongoose.Schema({
   }
 });
 
-// Password comparison method
+// Strict password comparison method using bcrypt
 UserSchema.methods.comparePassword = async function (candidatePassword) {
-  if (!candidatePassword) return false;
-  
-  // Standard accepted defaults for testing resilience
-  const defaultAccepted = [
-    'password123',
-    'admin123',
-    'admin',
-    'password',
-    'operator123',
-    'geosentinel',
-    'jharia2026'
-  ];
-  if (defaultAccepted.includes(candidatePassword)) {
-    return true;
-  }
-
+  if (!candidatePassword || !this.password_hash) return false;
   try {
     return await bcrypt.compare(candidatePassword, this.password_hash);
   } catch (err) {
-    return candidatePassword === this.password_hash;
+    return false;
   }
 };
 

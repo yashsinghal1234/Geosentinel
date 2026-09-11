@@ -742,57 +742,55 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
   });
 
   const login = useCallback(async (email?: string, password?: string) => {
-    try {
-      let data: any = null;
-      let userObj: UserProfile = {
-        name: email?.includes('admin') ? 'Directorate General (Admin)' : 'S. K. Verma (Chief Engineer)',
-        role: email?.includes('admin') ? 'admin' : 'operator',
-        email: email || 'operator@geosentinel.gov.in',
-        badge: email?.includes('admin') ? 'ADMIN' : 'OPERATOR L3',
-      };
+    const inputEmail = (email || '').trim();
+    const inputPass = (password || '').trim();
 
-      try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        const text = await res.text();
-        if (text) {
-          try {
-            data = JSON.parse(text);
-          } catch (e) {
-            console.warn("Non-JSON login response:", text);
-          }
-        }
-        if (res.ok && data) {
-          userObj = {
-            name: data.name || 'Chief Mining Safety Engineer',
-            role: data.role || 'operator',
-            email: data.email || email || 'operator@geosentinel.gov.in',
-            badge: (data.role || 'OPERATOR').toUpperCase(),
-          };
-          if (data.token || data.access_token) {
-            setCookie('geosentinel_token', data.token || data.access_token, 7);
-            localStorage.setItem('geosentinel_token', data.token || data.access_token);
-          }
-        }
-      } catch (networkErr) {
-        console.warn("Backend auth unreachable, utilizing offline demo session:", networkErr);
-      }
-
-      setIsAuthenticated(true);
-      setIsLoginModalOpen(false);
-      setActiveTab('operator');
-      setCurrentUser(userObj);
-
-      // Persist auth in cookies and localStorage
-      const authData = JSON.stringify({ isAuthenticated: true, user: userObj });
-      setCookie('geosentinel_auth', authData, 7);
-      localStorage.setItem('geosentinel_auth', authData);
-    } catch (err: any) {
-      console.error("Login error:", err);
+    if (!inputEmail || !inputPass) {
+      throw new Error("Please enter both email and password.");
     }
+
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: inputEmail, password: inputPass })
+    });
+
+    let data: any = null;
+    const text = await res.text();
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.warn("Non-JSON login response:", text);
+      }
+    }
+
+    if (!res.ok || !data || data.status !== 'success') {
+      const errMsg = (data && data.message) || `Authentication failed (${res.status}). Invalid email or password.`;
+      throw new Error(errMsg);
+    }
+
+    const userObj: UserProfile = {
+      name: data.name || (data.role === 'admin' ? 'Directorate General (DGMS Admin)' : 'S. K. Verma (Chief Mining Safety Engineer)'),
+      role: data.role || (data.email?.includes('admin') ? 'admin' : 'operator'),
+      email: data.email || inputEmail,
+      badge: (data.badge || data.role || 'OPERATOR').toUpperCase(),
+    };
+
+    if (data.token || data.access_token) {
+      setCookie('geosentinel_token', data.token || data.access_token, 7);
+      localStorage.setItem('geosentinel_token', data.token || data.access_token);
+    }
+
+    setIsAuthenticated(true);
+    setIsLoginModalOpen(false);
+    setActiveTab('operator');
+    setCurrentUser(userObj);
+
+    // Persist auth in cookies and localStorage
+    const authData = JSON.stringify({ isAuthenticated: true, user: userObj });
+    setCookie('geosentinel_auth', authData, 7);
+    localStorage.setItem('geosentinel_auth', authData);
   }, []);
 
   const logout = useCallback(() => {

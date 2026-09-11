@@ -25,7 +25,35 @@ async function runTests() {
     }
   });
 
-  // 2. Admin Login
+  // 2. Strict Auth Check - Reject Fake/Unknown Account
+  await test('POST /api/auth/login (Reject unknown account fake_user@random.com)', async () => {
+    const res = await fetch('http://localhost:8000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'fake_user@random.com', password: 'randompassword' })
+    });
+    const data = await res.json();
+    if (res.status !== 401 || data.status !== 'error') {
+      throw new Error(`Expected 401 Unauthorized, but got: ${res.status} - ${JSON.stringify(data)}`);
+    }
+    console.log(`   -> Correctly rejected unknown account: "${data.message}"`);
+  });
+
+  // 3. Strict Auth Check - Reject Wrong Password for admin@geo.com
+  await test('POST /api/auth/login (Reject wrong password for admin@geo.com)', async () => {
+    const res = await fetch('http://localhost:8000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@geo.com', password: 'wrongpassword999' })
+    });
+    const data = await res.json();
+    if (res.status !== 401 || data.status !== 'error') {
+      throw new Error(`Expected 401 Unauthorized, but got: ${res.status} - ${JSON.stringify(data)}`);
+    }
+    console.log(`   -> Correctly rejected wrong password: "${data.message}"`);
+  });
+
+  // 4. Valid Admin Login
   let adminToken = '';
   await test('POST /api/auth/login (admin@geo.com / password123)', async () => {
     const res = await fetch('http://localhost:8000/api/auth/login', {
@@ -41,7 +69,7 @@ async function runTests() {
     console.log(`   -> Logged in as: ${data.name} (${data.role}) - Token: ${adminToken.substring(0, 20)}...`);
   });
 
-  // 3. Operator Login
+  // 5. Valid Operator Login
   await test('POST /api/auth/login (operator@geosentinel.gov.in / password123)', async () => {
     const res = await fetch('http://localhost:8000/api/auth/login', {
       method: 'POST',
@@ -55,7 +83,7 @@ async function runTests() {
     console.log(`   -> Logged in as: ${data.name} (${data.role})`);
   });
 
-  // 4. Credentials Hint
+  // 6. Credentials Hint
   await test('GET /api/auth/credentials-hint', async () => {
     const res = await fetch('http://localhost:8000/api/auth/credentials-hint');
     const data = await res.json();
@@ -64,7 +92,7 @@ async function runTests() {
     }
   });
 
-  // 5. Get Nodes List
+  // 7. Get Nodes List
   await test('GET /api/nodes', async () => {
     const res = await fetch('http://localhost:8000/api/nodes');
     const data = await res.json();
@@ -74,7 +102,7 @@ async function runTests() {
     console.log(`   -> Retrieved ${data.length} IoT mesh nodes (Nodes: ${data.map(n => n.id).join(', ')})`);
   });
 
-  // 6. Dynamic Topology Graph
+  // 8. Dynamic Topology Graph
   await test('GET /api/topology', async () => {
     const res = await fetch('http://localhost:8000/api/topology');
     const data = await res.json();
@@ -84,7 +112,7 @@ async function runTests() {
     console.log(`   -> Canvas nodes: ${data.nodes.length}, Topology links: ${data.links.length}`);
   });
 
-  // 7. Citizen Crack Reports
+  // 9. Citizen Crack Reports
   await test('GET /api/reports', async () => {
     const res = await fetch('http://localhost:8000/api/reports');
     const data = await res.json();
@@ -94,7 +122,7 @@ async function runTests() {
     console.log(`   -> Retrieved ${data.length} citizen crack reports`);
   });
 
-  // 8. Submit New Crack Report
+  // 10. Submit New Crack Report
   let newReportId = '';
   await test('POST /api/reports (Submit Crack Observation)', async () => {
     const res = await fetch('http://localhost:8000/api/reports', {
@@ -118,7 +146,7 @@ async function runTests() {
     console.log(`   -> Created report: ${data.id}, Nearest node: ${data.nearest_sensor_id} (${data.nearest_sensor_distance_m}m)`);
   });
 
-  // 9. Operator Review of Crack Report
+  // 11. Operator Review of Crack Report
   await test(`POST /api/reports/${newReportId}/review (Approve & Corroborate)`, async () => {
     const res = await fetch(`http://localhost:8000/api/reports/${newReportId}/review`, {
       method: 'POST',
@@ -135,7 +163,7 @@ async function runTests() {
     }
   });
 
-  // 10. Dashboard Summary Metrics
+  // 12. Dashboard Summary Metrics
   await test('GET /api/dashboard/summary', async () => {
     const res = await fetch('http://localhost:8000/api/dashboard/summary');
     const data = await res.json();
@@ -145,7 +173,7 @@ async function runTests() {
     console.log(`   -> Alert level: ${data.current_alert_level}, Highest risk score: ${data.highest_risk_score}`);
   });
 
-  // 11. Edge Gateway Status
+  // 13. Edge Gateway Status
   await test('GET /api/gateway/status', async () => {
     const res = await fetch('http://localhost:8000/api/gateway/status');
     const data = await res.json();
@@ -155,7 +183,7 @@ async function runTests() {
     console.log(`   -> Gateway status: ${data[0].gateway_id} (${data[0].status})`);
   });
 
-  // 12. Alerts List
+  // 14. Alerts List
   await test('GET /api/alerts', async () => {
     const res = await fetch('http://localhost:8000/api/alerts');
     const data = await res.json();
