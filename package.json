@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "node backend/server.js",
+    "test:backend": "node backend/test-api.js",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"

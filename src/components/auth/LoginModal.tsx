@@ -74,6 +74,47 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
           </button>
         </div>
 
+        {/* Quick Demo Credentials */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-[11px] text-[#808080]">
+            <span>Quick-fill verified accounts:</span>
+            <span className="text-[#3fcb7f] font-mono text-[10px]">DATABASE READY</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('admin@geo.com');
+                setPassword('password123');
+              }}
+              className="flex flex-col items-start p-2 rounded-[8px] border border-[#262626] bg-[#0c0d0e] hover:border-[#3fcb7f]/50 hover:bg-[#121416] transition-all text-left group cursor-pointer"
+            >
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white group-hover:text-[#3fcb7f]">
+                <span>👑</span>
+                <span>DGMS Admin</span>
+              </div>
+              <span className="text-[10px] font-mono text-[#888888] truncate w-full">admin@geo.com</span>
+              <span className="text-[9px] font-mono text-[#555555]">pass: password123</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('operator@geosentinel.gov.in');
+                setPassword('password123');
+              }}
+              className="flex flex-col items-start p-2 rounded-[8px] border border-[#262626] bg-[#0c0d0e] hover:border-[#38bdf8]/50 hover:bg-[#121416] transition-all text-left group cursor-pointer"
+            >
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white group-hover:text-[#38bdf8]">
+                <span>🛡️</span>
+                <span>Chief Operator</span>
+              </div>
+              <span className="text-[10px] font-mono text-[#888888] truncate w-full">operator@...</span>
+              <span className="text-[9px] font-mono text-[#555555]">pass: password123</span>
+            </button>
+          </div>
+        </div>
+
         {/* Credentials Form */}
         <form onSubmit={handleLoginSubmit} className="space-y-4 text-[13px]">
           <div>
@@ -81,7 +122,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
             <input
               type="email"
               required
-              placeholder="operator@geosentinel.gov.in"
+              placeholder="admin@geo.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-[6px] border border-[#333333] bg-black px-3 py-2 font-mono text-white text-[12px] focus:outline-none focus:border-white transition-colors"

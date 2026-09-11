@@ -28,6 +28,10 @@ async def startup_db_client():
     db = get_db()
     if db is not None:
         try:
+            # Seed default users
+            await auth.seed_default_users()
+            
+            # Seed initial nodes if empty
             count = await db.nodes.count_documents({})
             if count == 0:
                 from routes.nodes import DEFAULT_NODES
