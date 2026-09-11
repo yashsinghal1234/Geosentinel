@@ -30,9 +30,18 @@ def sanitize_mongodb_uri(uri: str) -> str:
 
 async def connect_to_mongo():
     try:
+        import certifi
+        ca = certifi.where()
+    except Exception:
+        ca = None
+
+    try:
         logger.info("Connecting to MongoDB Atlas...")
         clean_uri = sanitize_mongodb_uri(settings.MONGODB_URI)
-        client = AsyncIOMotorClient(clean_uri, serverSelectionTimeoutMS=5000)
+        client_kwargs = {"serverSelectionTimeoutMS": 5000}
+        if ca:
+            client_kwargs["tlsCAFile"] = ca
+        client = AsyncIOMotorClient(clean_uri, **client_kwargs)
         # Test connection ping
         await client.admin.command('ping')
         db.client = client

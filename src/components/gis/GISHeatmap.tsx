@@ -12,14 +12,39 @@ interface GISHeatmapProps {
 
 // Helper to determine true live node alert status from readings & thresholds
 export const calculateNodeStatus = (node: SensorNode): 'critical' | 'warning' | 'online' => {
-  const { readings, thresholds } = node;
+  if (!node) return 'online';
+  const readings = node.readings || {
+    tiltDeg: 0,
+    vibrationMmS: 0,
+    crackWidthMm: 0,
+    gasPpm: 0,
+    rainfallMmHr: 0,
+    batteryPct: 100,
+    rssiDbm: -70,
+    lastHeartbeat: Date.now()
+  };
+  const thresholds = node.thresholds || {
+    tiltWarningDeg: 3.5,
+    tiltCriticalDeg: 6.0,
+    vibrationWarningMmS: 5.0,
+    vibrationCriticalMmS: 12.0,
+    crackWarningMm: 8.0,
+    crackCriticalMm: 18.0,
+    gasWarningPpm: 50,
+    gasCriticalPpm: 120
+  };
+
+  const tiltDeg = readings.tiltDeg ?? 0;
+  const vibrationMmS = readings.vibrationMmS ?? 0;
+  const crackWidthMm = readings.crackWidthMm ?? 0;
+  const gasPpm = readings.gasPpm ?? 0;
   
   // Critical check
   if (
-    readings.tiltDeg >= thresholds.tiltCriticalDeg ||
-    readings.vibrationMmS >= thresholds.vibrationCriticalMmS ||
-    readings.crackWidthMm >= thresholds.crackCriticalMm ||
-    readings.gasPpm >= thresholds.gasCriticalPpm ||
+    tiltDeg >= (thresholds.tiltCriticalDeg ?? 6.0) ||
+    vibrationMmS >= (thresholds.vibrationCriticalMmS ?? 12.0) ||
+    crackWidthMm >= (thresholds.crackCriticalMm ?? 18.0) ||
+    gasPpm >= (thresholds.gasCriticalPpm ?? 120) ||
     node.status === 'critical'
   ) {
     return 'critical';
@@ -27,11 +52,11 @@ export const calculateNodeStatus = (node: SensorNode): 'critical' | 'warning' | 
 
   // Warning check (or significant crack expansion / gallery proximity)
   if (
-    readings.tiltDeg >= thresholds.tiltWarningDeg ||
-    readings.vibrationMmS >= thresholds.vibrationWarningMmS ||
-    readings.crackWidthMm >= thresholds.crackWarningMm ||
-    readings.gasPpm >= thresholds.gasWarningPpm ||
-    readings.crackWidthMm >= 3.0 ||
+    tiltDeg >= (thresholds.tiltWarningDeg ?? 3.5) ||
+    vibrationMmS >= (thresholds.vibrationWarningMmS ?? 5.0) ||
+    crackWidthMm >= (thresholds.crackWarningMm ?? 8.0) ||
+    gasPpm >= (thresholds.gasWarningPpm ?? 50) ||
+    crackWidthMm >= 3.0 ||
     node.id === 'SN-03' || 
     node.id === 'SN-05' ||
     node.status === 'warning'
@@ -538,12 +563,12 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
               <span style="color: ${statusColor}; font-weight: bold; text-transform: uppercase; font-size: 10px;">${trueStatus}</span>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; color: #aaa; font-size: 11px;">
-              <div>Tilt: <strong style="color: #fff;">${node.readings.tiltDeg.toFixed(2)}°</strong></div>
-              <div>Vib: <strong style="color: #fff;">${node.readings.vibrationMmS.toFixed(1)} mm/s</strong></div>
-              <div>Crack: <strong style="color: #fff;">${node.readings.crackWidthMm.toFixed(1)} mm</strong></div>
-              <div>Gas: <strong style="color: #fff;">${node.readings.gasPpm} ppm</strong></div>
-              <div>Battery: <strong style="color: #fff;">${node.readings.batteryPct}%</strong></div>
-              <div>RSSI: <strong style="color: #fff;">${node.readings.rssiDbm} dBm</strong></div>
+              <div>Tilt: <strong style="color: #fff;">{(node.readings?.tiltDeg ?? 0).toFixed(2)}°</strong></div>
+              <div>Vib: <strong style="color: #fff;">{(node.readings?.vibrationMmS ?? 0).toFixed(1)} mm/s</strong></div>
+              <div>Crack: <strong style="color: #fff;">{(node.readings?.crackWidthMm ?? 0).toFixed(1)} mm</strong></div>
+              <div>Gas: <strong style="color: #fff;">{node.readings?.gasPpm ?? 0} ppm</strong></div>
+              <div>Battery: <strong style="color: #fff;">{node.readings?.batteryPct ?? 100}%</strong></div>
+              <div>RSSI: <strong style="color: #fff;">{node.readings?.rssiDbm ?? -70} dBm</strong></div>
             </div>
             <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #1f232b; font-size: 10px; color: #777;">
               Mesh Parent: ${node.parentNodeId || 'GW-01'} • Hop: ${node.meshHopCount}

@@ -922,7 +922,42 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
             try {
               const data = JSON.parse(text);
               if (Array.isArray(data) && data.length > 0) {
-                setNodes(data);
+                const normalized: SensorNode[] = data.map((n: any) => ({
+                  id: n.id || n._id || `SN-${Math.floor(Math.random() * 100)}`,
+                  name: n.name || `Sensor Node ${n.id || ''}`,
+                  code: n.code || n.id || 'SN-XX',
+                  type: n.type || 'tiltmeter',
+                  zone: n.zone || 'Sector 4 (Village Slope)',
+                  lat: typeof n.lat === 'number' ? n.lat : (n.latitude || 23.7482),
+                  lng: typeof n.lng === 'number' ? n.lng : (n.longitude || 86.4195),
+                  elevationMeters: n.elevationMeters || 220,
+                  depthMeters: n.depthMeters,
+                  meshHopCount: n.meshHopCount || 1,
+                  parentNodeId: n.parentNodeId || 'GW-01',
+                  status: n.status || 'online',
+                  history: Array.isArray(n.history) ? n.history : [],
+                  readings: {
+                    tiltDeg: n.readings?.tiltDeg ?? n.tilt_x ?? 0.8,
+                    vibrationMmS: n.readings?.vibrationMmS ?? n.vibration ?? 0.5,
+                    crackWidthMm: n.readings?.crackWidthMm ?? 0.0,
+                    gasPpm: n.readings?.gasPpm ?? 10,
+                    rainfallMmHr: n.readings?.rainfallMmHr ?? 4.2,
+                    batteryPct: n.readings?.batteryPct ?? n.battery ?? 95,
+                    rssiDbm: n.readings?.rssiDbm ?? -70,
+                    lastHeartbeat: n.readings?.lastHeartbeat ?? Date.now(),
+                  },
+                  thresholds: {
+                    tiltWarningDeg: n.thresholds?.tiltWarningDeg ?? 3.5,
+                    tiltCriticalDeg: n.thresholds?.tiltCriticalDeg ?? 6.0,
+                    vibrationWarningMmS: n.thresholds?.vibrationWarningMmS ?? 5.0,
+                    vibrationCriticalMmS: n.thresholds?.vibrationCriticalMmS ?? 12.0,
+                    crackWarningMm: n.thresholds?.crackWarningMm ?? 8.0,
+                    crackCriticalMm: n.thresholds?.crackCriticalMm ?? 18.0,
+                    gasWarningPpm: n.thresholds?.gasWarningPpm ?? 50,
+                    gasCriticalPpm: n.thresholds?.gasCriticalPpm ?? 120,
+                  }
+                }));
+                setNodes(normalized);
               }
             } catch (e) {
               // Ignore non-json

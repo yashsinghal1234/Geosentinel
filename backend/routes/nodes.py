@@ -291,7 +291,7 @@ async def get_nodes():
     return nodes
 
 @router.post("", response_model=Dict[str, Any])
-@router.post("/", response_model=Dict[str, Any]])
+@router.post("/", response_model=Dict[str, Any])
 async def register_node(node_in: NodeCreate, current_user = Depends(get_current_user)):
     db = get_db()
     

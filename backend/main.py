@@ -25,6 +25,18 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_db_client():
     await connect_to_mongo()
+    db = get_db()
+    if db is not None:
+        try:
+            count = await db.nodes.count_documents({})
+            if count == 0:
+                from routes.nodes import DEFAULT_NODES
+                # Clean _id for insertion
+                seed_docs = [dict(n, _id=n["id"]) for n in DEFAULT_NODES]
+                await db.nodes.insert_many(seed_docs)
+                logger.info("⚡ Seeded initial 8 IoT mesh nodes into MongoDB Atlas!")
+        except Exception as seed_err:
+            logger.warning(f"Auto-seed note: {seed_err}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

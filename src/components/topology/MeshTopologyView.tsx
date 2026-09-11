@@ -358,19 +358,19 @@ export const MeshTopologyView: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3 text-xs font-mono">
                   <div className="p-2.5 rounded-lg border border-white/5 bg-white/[0.02]">
                     <span className="text-[10px] text-white/40 block">Tilt Slope</span>
-                    <span className="text-white font-semibold">{selectedNode.readings.tiltDeg}°</span>
+                    <span className="text-white font-semibold">{selectedNode.readings?.tiltDeg ?? 0}°</span>
                   </div>
                   <div className="p-2.5 rounded-lg border border-white/5 bg-white/[0.02]">
                     <span className="text-[10px] text-white/40 block">Crack Width</span>
-                    <span className="text-white font-semibold">{selectedNode.readings.crackWidthMm} mm</span>
+                    <span className="text-white font-semibold">{selectedNode.readings?.crackWidthMm ?? 0} mm</span>
                   </div>
                   <div className="p-2.5 rounded-lg border border-white/5 bg-white/[0.02]">
                     <span className="text-[10px] text-white/40 block">Vibration PPV</span>
-                    <span className="text-white font-semibold">{selectedNode.readings.vibrationMmS} mm/s</span>
+                    <span className="text-white font-semibold">{selectedNode.readings?.vibrationMmS ?? 0} mm/s</span>
                   </div>
                   <div className="p-2.5 rounded-lg border border-white/5 bg-white/[0.02]">
                     <span className="text-[10px] text-white/40 block">Battery Level</span>
-                    <span className="text-[#22c55e] font-semibold">{selectedNode.readings.batteryPct}%</span>
+                    <span className="text-[#22c55e] font-semibold">{selectedNode.readings?.batteryPct ?? 100}%</span>
                   </div>
                 </div>
 
@@ -381,7 +381,7 @@ export const MeshTopologyView: React.FC = () => {
                   </div>
                   <div className="flex justify-between text-white/60">
                     <span>Signal Strength:</span>
-                    <span className="text-white">{selectedNode.readings.rssiDbm} dBm</span>
+                    <span className="text-white">{selectedNode.readings?.rssiDbm ?? -70} dBm</span>
                   </div>
                   <div className="flex justify-between text-white/60">
                     <span>Last Heartbeat:</span>

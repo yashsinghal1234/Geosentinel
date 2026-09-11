@@ -681,10 +681,10 @@ export const OperatorDashboard: React.FC = () => {
                         <td className="p-4 font-bold text-white">{n.id}</td>
                         <td className="p-4 text-[#d1d5db]">{n.zone}</td>
                         <td className="p-4 text-[#888] uppercase">{n.type}</td>
-                        <td className="p-4 text-white">{n.readings.tiltDeg.toFixed(2)}°</td>
-                        <td className="p-4 text-white">{n.readings.vibrationMmS.toFixed(1)} mm/s</td>
-                        <td className="p-4 text-white">{n.readings.crackWidthMm.toFixed(1)} mm</td>
-                        <td className="p-4 text-white">{n.readings.batteryPct}%</td>
+                        <td className="p-4 text-white">{(n.readings?.tiltDeg ?? 0).toFixed(2)}°</td>
+                        <td className="p-4 text-white">{(n.readings?.vibrationMmS ?? 0).toFixed(1)} mm/s</td>
+                        <td className="p-4 text-white">{(n.readings?.crackWidthMm ?? 0).toFixed(1)} mm</td>
+                        <td className="p-4 text-white">{n.readings?.batteryPct ?? 100}%</td>
                         <td className="p-4 text-right">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] ${
                             n.status === 'critical' ? 'bg-[#2a0e0e] text-[#ef4444]' :

@@ -27,12 +27,13 @@ export function calculateCIMFRSubsidence(
  * Calculates rate-of-change / velocity of tilt and crack apertures
  */
 export function calculateRateOfChange(node: SensorNode): number {
-  if (node.history.length < 2) return 1.0;
+  if (!node || !node.history || node.history.length < 2) return 1.0;
   const latest = node.history[node.history.length - 1];
   const previous = node.history[node.history.length - 2];
+  if (!latest || !previous) return 1.0;
   
-  const deltaCrack = Math.max(0, latest.crackWidthMm - previous.crackWidthMm);
-  const deltaTilt = Math.max(0, latest.tiltDeg - previous.tiltDeg);
+  const deltaCrack = Math.max(0, (latest.crackWidthMm ?? 0) - (previous.crackWidthMm ?? 0));
+  const deltaTilt = Math.max(0, (latest.tiltDeg ?? 0) - (previous.tiltDeg ?? 0));
   
   // Acceleration factor (1.0 = baseline, >1.5 = accelerating creep)
   return 1.0 + (deltaCrack * 1.8) + (deltaTilt * 1.2);
@@ -55,17 +56,37 @@ export function evaluateGeologicalRisk(
   const rainfallBoostMultiplier = rainfallMmHr > 35 ? 1.45 : rainfallMmHr > 15 ? 1.2 : 1.0;
 
   for (const node of nodes) {
-    const { tiltDeg, vibrationMmS, crackWidthMm, gasPpm } = node.readings;
-    const { 
-      tiltWarningDeg, 
-      tiltCriticalDeg, 
-      vibrationWarningMmS, 
-      vibrationCriticalMmS, 
-      crackWarningMm, 
-      crackCriticalMm, 
-      gasWarningPpm, 
-      gasCriticalPpm 
-    } = node.thresholds;
+    if (!node) continue;
+    const readings = node.readings || {
+      tiltDeg: 0,
+      vibrationMmS: 0,
+      crackWidthMm: 0,
+      gasPpm: 0
+    };
+    const thresholds = node.thresholds || {
+      tiltWarningDeg: 3.5,
+      tiltCriticalDeg: 6.0,
+      vibrationWarningMmS: 5.0,
+      vibrationCriticalMmS: 12.0,
+      crackWarningMm: 8.0,
+      crackCriticalMm: 18.0,
+      gasWarningPpm: 50,
+      gasCriticalPpm: 120
+    };
+
+    const tiltDeg = readings.tiltDeg ?? 0;
+    const vibrationMmS = readings.vibrationMmS ?? 0;
+    const crackWidthMm = readings.crackWidthMm ?? 0;
+    const gasPpm = readings.gasPpm ?? 0;
+
+    const tiltWarningDeg = thresholds.tiltWarningDeg ?? 3.5;
+    const tiltCriticalDeg = thresholds.tiltCriticalDeg ?? 6.0;
+    const vibrationWarningMmS = thresholds.vibrationWarningMmS ?? 5.0;
+    const vibrationCriticalMmS = thresholds.vibrationCriticalMmS ?? 12.0;
+    const crackWarningMm = thresholds.crackWarningMm ?? 8.0;
+    const crackCriticalMm = thresholds.crackCriticalMm ?? 18.0;
+    const gasWarningPpm = thresholds.gasWarningPpm ?? 50;
+    const gasCriticalPpm = thresholds.gasCriticalPpm ?? 120;
 
     const rateFactor = calculateRateOfChange(node);
 
@@ -82,7 +103,8 @@ export function evaluateGeologicalRisk(
     nodeScore = nodeScore * rainfallBoostMultiplier * geologicalPorePressureMultiplier;
 
     // Structural proximity factor (Sector 3 & 4 near village and old gallery have 1.25x weight)
-    const structuralProximityBoost = node.zone.includes('Sector 3') || node.zone.includes('Sector 4') ? 1.25 : 1.0;
+    const zoneStr = node.zone || '';
+    const structuralProximityBoost = zoneStr.includes('Sector 3') || zoneStr.includes('Sector 4') ? 1.25 : 1.0;
 
     // Aggregate weighted node score
     const rawScore = (
