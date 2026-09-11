@@ -3,12 +3,8 @@ import L from 'leaflet';
 import { useGeoSentinel } from '../../context/GeoSentinelContext';
 import type { SensorNode, GatewayDevice } from '../../types';
 import { 
-  MapPin,
-  X,
-  ChevronDown,
-  ChevronUp
+  MapPin
 } from '../icons';
-
 
 interface GISHeatmapProps {
   onSelectNode?: (node: SensorNode) => void;
@@ -176,22 +172,10 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
   const [showCrackPins, setShowCrackPins] = useState<boolean>(true);
   const [showShelters, setShowShelters] = useState<boolean>(true);
 
-  // Inspector States for on-click inspection
-  const [selectedNode, setSelectedNode] = useState<SensorNode | null>(null);
-  const [selectedMaster, setSelectedMaster] = useState<GatewayDevice | null>(null);
-  const [isInspectorExpanded, setIsInspectorExpanded] = useState<boolean>(true);
-  const [disabledNodeIds, setDisabledNodeIds] = useState<string[]>([]);
-
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const overlayGroupRef = useRef<L.LayerGroup | null>(null);
-
-  const toggleNodeDisabled = (id: string) => {
-    setDisabledNodeIds(prev => 
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
-  };
 
   const getTileConfig = (type: 'dark' | 'satellite') => {
     switch (type) {
@@ -234,18 +218,19 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     const config = getTileConfig(basemapType);
-    const tileLayer = L.tileLayer(config.url, {
+    const tiles = L.tileLayer(config.url, {
+      subdomains: config.subdomains.length > 0 ? config.subdomains : 'abc',
       maxZoom: config.maxZoom,
       maxNativeZoom: config.maxNativeZoom,
-      subdomains: config.subdomains.length > 0 ? config.subdomains : 'abc',
       className: config.className,
     }).addTo(map);
 
-    tileLayerRef.current = tileLayer;
-    mapInstanceRef.current = map;
+    tileLayerRef.current = tiles;
 
     const overlayGroup = L.layerGroup().addTo(map);
     overlayGroupRef.current = overlayGroup;
+
+    mapInstanceRef.current = map;
 
     // Initial fit to nodes
     const t1 = setTimeout(() => {
@@ -275,177 +260,189 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     };
   }, []);
 
-  // 2. Handle Basemap Switcher
+  // 2. Switch Basemap (Dark vs Satellite)
   useEffect(() => {
-    if (!mapInstanceRef.current || !tileLayerRef.current) return;
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+    }
+
     const config = getTileConfig(basemapType);
-    mapInstanceRef.current.removeLayer(tileLayerRef.current);
-    const newTileLayer = L.tileLayer(config.url, {
+    const newTiles = L.tileLayer(config.url, {
+      subdomains: config.subdomains.length > 0 ? config.subdomains : 'abc',
       maxZoom: config.maxZoom,
       maxNativeZoom: config.maxNativeZoom,
-      subdomains: config.subdomains.length > 0 ? config.subdomains : 'abc',
       className: config.className,
-    }).addTo(mapInstanceRef.current);
-    tileLayerRef.current = newTileLayer;
+    }).addTo(map);
+
+    tileLayerRef.current = newTiles;
   }, [basemapType]);
 
-  // 3. Pan to Centroid when sector or mine changes
+  // 3. Smooth Auto-Fit when Mine or Sector changes
   useEffect(() => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo(mapCenter, 16, { duration: 1.2 });
-    }
-  }, [mapCenter]);
+    const map = mapInstanceRef.current;
+    if (!map || activeNodes.length === 0) return;
 
-  // 4. Render Layers (Heatmap circles, WiFi mesh links, Master hubs, ESP32 pods, Crack pins, Shelters)
+    const coords = activeNodes.map(n => [n.lat, n.lng] as [number, number]);
+    if (coords.length > 0) {
+      const bounds = L.latLngBounds(coords);
+      map.flyToBounds(bounds, { padding: [55, 55], maxZoom: 16, duration: 0.75 });
+    }
+  }, [selectedMine, selectedSector, activeNodes.length]);
+
+  // 4. Render All Map Layers (ESP32-S3 Pods, RPi 4 Masters, Mesh Links, Risk Plumes)
   useEffect(() => {
-    if (!overlayGroupRef.current || !mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
     const group = overlayGroupRef.current;
+    if (!map || !group) return;
+
     group.clearLayers();
 
-    // A. RENDER DYNAMIC RISK HEAT PLUMES
+    // A. DYNAMIC MULTI-SENSOR RISK HEATMAP PLUMES (BNO085 IMU + Soil Moisture + BME280)
     if (showHeatmap) {
-      activeNodes.forEach((node) => {
-        const isDisabled = disabledNodeIds.includes(node.id);
-        const trueStatus = isDisabled ? 'online' : calculateNodeStatus(node);
-        const readings = node.readings || ({} as any);
-
-        const tilt = readings.tiltDeg ?? 0;
-        const moisture = readings.soilMoisturePct ?? 50;
-        const vib = readings.vibrationMmS ?? 0;
-
-        let riskScore = 20;
-        if (trueStatus === 'critical') {
-          riskScore = 88 + Math.min(10, tilt * 1.5 + (moisture - 75) * 0.4);
-        } else if (trueStatus === 'warning') {
-          riskScore = 55 + Math.min(20, tilt * 3.0 + (moisture - 60) * 0.5);
-        } else {
-          riskScore = 15 + Math.min(20, tilt * 4.0 + vib * 2.0);
-        }
-
-        if (isDisabled) riskScore = 10;
-
-        const radiusMeters = 80 + (riskScore * 1.6);
-        const color = riskScore >= 75 ? '#ef4444' : riskScore >= 45 ? '#f59e0b' : '#22c55e';
-        const fillOpacity = isDisabled ? 0.05 : riskScore >= 75 ? 0.42 : riskScore >= 45 ? 0.28 : 0.16;
-
-        L.circle([node.lat, node.lng], {
-          radius: radiusMeters,
-          color: color,
-          weight: 1.5,
-          opacity: isDisabled ? 0.1 : 0.6,
-          fillColor: color,
-          fillOpacity: fillOpacity,
-          dashArray: riskScore < 45 ? '3, 6' : undefined,
-        }).addTo(group);
+      const riskNodes = activeNodes.filter((node) => {
+        const status = calculateNodeStatus(node);
+        const { readings, thresholds } = node;
+        const tiltRatio = (readings?.tiltDeg ?? 0) / (thresholds?.tiltWarningDeg || 3.5);
+        const vibRatio = (readings?.vibrationMmS ?? 0) / (thresholds?.vibrationWarningMmS || 4.5);
+        const moistRatio = (readings?.soilMoisturePct ?? 50) / (thresholds?.soilMoistureWarningPct || 75.0);
+        return status !== 'online' || Math.max(tiltRatio, vibRatio, moistRatio) >= 0.5;
       });
+
+      if (riskNodes.length > 0) {
+        riskNodes.forEach((node) => {
+          const status = calculateNodeStatus(node);
+          const { readings, thresholds } = node;
+          const tiltRatio = (readings?.tiltDeg ?? 0) / (thresholds?.tiltCriticalDeg || 6.0);
+          const vibRatio = (readings?.vibrationMmS ?? 0) / (thresholds?.vibrationCriticalMmS || 12.0);
+          const moistRatio = (readings?.soilMoisturePct ?? 50) / (thresholds?.soilMoistureCriticalPct || 85.0);
+          const maxRatio = Math.max(tiltRatio, vibRatio, moistRatio);
+
+          const rainMultiplier = 1 + Math.min(rainfallRate, 60) / 120;
+
+          if (status === 'critical' || maxRatio >= 0.85) {
+            const plumeRadius = Math.min(360, (180 + maxRatio * 120) * rainMultiplier);
+            
+            // Outer Low / Advisory Ring
+            L.circle([node.lat, node.lng], {
+              radius: plumeRadius,
+              stroke: false,
+              fillColor: '#84cc16',
+              fillOpacity: 0.22,
+              className: 'pointer-events-none',
+            }).addTo(group);
+
+            // Mid Warning Ring
+            L.circle([node.lat, node.lng], {
+              radius: plumeRadius * 0.65,
+              stroke: false,
+              fillColor: '#f97316',
+              fillOpacity: 0.38,
+              className: 'pointer-events-none',
+            }).addTo(group);
+
+            // Core Crimson Eye (Critical Liquefaction / Shear Epicenter)
+            L.circle([node.lat, node.lng], {
+              radius: plumeRadius * 0.35,
+              stroke: true,
+              color: '#ff4d4d',
+              weight: 2,
+              dashArray: '4, 4',
+              fillColor: '#ef4444',
+              fillOpacity: 0.62,
+              className: 'pointer-events-none',
+            }).addTo(group);
+          } else {
+            // Warning Plume
+            const plumeRadius = Math.min(260, (130 + maxRatio * 90) * rainMultiplier);
+
+            L.circle([node.lat, node.lng], {
+              radius: plumeRadius,
+              stroke: false,
+              fillColor: '#eab308',
+              fillOpacity: 0.24,
+              className: 'pointer-events-none',
+            }).addTo(group);
+
+            L.circle([node.lat, node.lng], {
+              radius: plumeRadius * 0.48,
+              stroke: false,
+              fillColor: '#f97316',
+              fillOpacity: 0.48,
+              className: 'pointer-events-none',
+            }).addTo(group);
+          }
+        });
+      } else if (activeNodes.length > 0) {
+        // Normal Baseline Ring
+        L.circle(mapCenter, {
+          radius: 200,
+          stroke: true,
+          color: '#22c55e',
+          weight: 1.5,
+          dashArray: '4, 6',
+          fillColor: '#10b981',
+          fillOpacity: 0.12,
+          className: 'pointer-events-none',
+        }).addTo(group);
+      }
     }
 
-    // B. RENDER PEER-TO-PEER WIFI MESH & LORA INTER-MASTER LINKS
+    // B. RENDER WIFI MESH & LORA INTER-MASTER LINKS
     if (showMeshLinks) {
-      const master1 = SECTOR_MASTERS.find(m => m.id === 'MASTER-S1')!;
-      const master2 = SECTOR_MASTERS.find(m => m.id === 'MASTER-S2')!;
+      // 1. Sector Masters to their ESP32-S3 Nodes (WiFi Mesh Links)
+      activeNodes.forEach((node) => {
+        const targetMaster = SECTOR_MASTERS.find(m => m.id === (node.masterId || (node.sector === 2 ? 'MASTER-S2' : 'MASTER-S1')));
+        if (targetMaster) {
+          const isWarning = calculateNodeStatus(node) !== 'online';
+          L.polyline([[node.lat, node.lng], [targetMaster.lat, targetMaster.lng]], {
+            color: isWarning ? '#f59e0b' : '#38bdf8',
+            weight: 1.8,
+            dashArray: '4, 6',
+            opacity: 0.7,
+            className: 'pointer-events-none',
+          }).addTo(group);
+        }
+      });
 
-      // Sector 1 WiFi Mesh Links
-      const nodeA = activeNodes.find(n => n.id === 'NODE-A');
-      const nodeB = activeNodes.find(n => n.id === 'NODE-B');
-      const nodeC = activeNodes.find(n => n.id === 'NODE-C');
+      // 2. Inter-Master LoRa SX1278 Bridge (Between Sector-1 Master and Sector-2 Master)
+      L.polyline([[SECTOR_MASTERS[0].lat, SECTOR_MASTERS[0].lng], [SECTOR_MASTERS[1].lat, SECTOR_MASTERS[1].lng]], {
+        color: '#c084fc', // Purple LoRa link
+        weight: 2.5,
+        dashArray: '6, 6',
+        opacity: 0.9,
+      }).addTo(group);
 
-      if (nodeA && master1) {
-        const isBroken = disabledNodeIds.includes(nodeA.id);
-        L.polyline([[nodeA.lat, nodeA.lng], [master1.lat, master1.lng]], {
-          color: isBroken ? '#444444' : '#38bdf8',
-          weight: 2,
-          opacity: isBroken ? 0.25 : 0.8,
-          dashArray: isBroken ? '4, 4' : '6, 4',
-        }).addTo(group);
-      }
-      if (nodeB && master1) {
-        const isBroken = disabledNodeIds.includes(nodeB.id);
-        L.polyline([[nodeB.lat, nodeB.lng], [master1.lat, master1.lng]], {
-          color: isBroken ? '#444444' : '#38bdf8',
-          weight: 2,
-          opacity: isBroken ? 0.25 : 0.8,
-          dashArray: isBroken ? '4, 4' : '6, 4',
-        }).addTo(group);
-      }
-      if (nodeC && nodeA) {
-        const isBroken = disabledNodeIds.includes(nodeC.id) || disabledNodeIds.includes(nodeA.id);
-        L.polyline([[nodeC.lat, nodeC.lng], [nodeA.lat, nodeA.lng]], {
-          color: isBroken ? '#444444' : '#22c55e',
-          weight: 2,
-          opacity: isBroken ? 0.25 : 0.7,
-          dashArray: isBroken ? '4, 4' : '4, 4',
-        }).addTo(group);
-      }
-
-      // Sector 2 WiFi Mesh Links
-      const nodeX = activeNodes.find(n => n.id === 'NODE-X');
-      const nodeY = activeNodes.find(n => n.id === 'NODE-Y');
-      const nodeZ = activeNodes.find(n => n.id === 'NODE-Z');
-
-      if (nodeX && master2) {
-        const isBroken = disabledNodeIds.includes(nodeX.id);
-        L.polyline([[nodeX.lat, nodeX.lng], [master2.lat, master2.lng]], {
-          color: isBroken ? '#444444' : '#38bdf8',
-          weight: 2,
-          opacity: isBroken ? 0.25 : 0.8,
-          dashArray: isBroken ? '4, 4' : '6, 4',
-        }).addTo(group);
-      }
-      if (nodeY && master2) {
-        const isBroken = disabledNodeIds.includes(nodeY.id);
-        L.polyline([[nodeY.lat, nodeY.lng], [master2.lat, master2.lng]], {
-          color: isBroken ? '#444444' : '#38bdf8',
-          weight: 2,
-          opacity: isBroken ? 0.25 : 0.8,
-          dashArray: isBroken ? '4, 4' : '6, 4',
-        }).addTo(group);
-      }
-      if (nodeZ && nodeY) {
-        const isBroken = disabledNodeIds.includes(nodeZ.id) || disabledNodeIds.includes(nodeY.id);
-        L.polyline([[nodeZ.lat, nodeZ.lng], [nodeY.lat, nodeY.lng]], {
-          color: isBroken ? '#444444' : '#22c55e',
-          weight: 2,
-          opacity: isBroken ? 0.25 : 0.7,
-          dashArray: isBroken ? '4, 4' : '4, 4',
-        }).addTo(group);
-      }
-
-      // LoRa SX1278 Inter-Master Bridge Link
-      if (master1 && master2) {
-        L.polyline([[master1.lat, master1.lng], [master2.lat, master2.lng]], {
-          color: '#c084fc',
-          weight: 3,
-          opacity: 0.9,
-          dashArray: '8, 4',
-        }).addTo(group);
-
-        const midLat = (master1.lat + master2.lat) / 2;
-        const midLng = (master1.lng + master2.lng) / 2;
-
-        const loraLabelIcon = L.divIcon({
-          className: 'custom-chip-icon',
-          html: `
-            <div style="
-              background: #0d0914;
-              border: 1.5px solid #a855f7;
-              border-radius: 6px;
-              padding: 2px 7px;
-              font-family: monospace;
-              font-size: 10px;
-              font-weight: 700;
-              color: #e9d5ff;
-              white-space: nowrap;
-              box-shadow: 0 4px 12px rgba(0,0,0,0.9);
-            ">
-              ⚡ LoRa SX1278 Inter-Master Bridge
-            </div>
-          `,
-          iconSize: [220, 22],
-          iconAnchor: [110, 11],
-        });
-        L.marker([midLat, midLng], { icon: loraLabelIcon, interactive: false }).addTo(group);
-      }
+      // LoRa Inter-Master ACK Label Chip
+      const midLat = (SECTOR_MASTERS[0].lat + SECTOR_MASTERS[1].lat) / 2;
+      const midLng = (SECTOR_MASTERS[0].lng + SECTOR_MASTERS[1].lng) / 2;
+      const loraLabelIcon = L.divIcon({
+        className: 'custom-chip-icon',
+        html: `
+          <div style="
+            background: #180d2b;
+            border: 1.5px solid #a855f7;
+            border-radius: 6px;
+            padding: 2px 7px;
+            font-family: monospace;
+            font-size: 10px;
+            font-weight: 700;
+            color: #d8b4fe;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.8);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+          ">
+            <span>📡 LoRa (SX1278) Inter-Master Bridge • ACK Sync</span>
+          </div>
+        `,
+        iconSize: [220, 22],
+        iconAnchor: [110, 11],
+      });
+      L.marker([midLat, midLng], { icon: loraLabelIcon, interactive: false }).addTo(group);
     }
 
     // C. RENDER SECTOR MASTER GATEWAYS (Raspberry Pi 4 Hubs)
@@ -457,15 +454,15 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
             <div style="position: relative; display: flex; align-items: center; gap: 8px; cursor: pointer;">
               <!-- Master Hub Icon Pin -->
               <div style="
-                width: 24px;
-                height: 24px;
+                width: 22px;
+                height: 22px;
                 border-radius: 6px;
                 background: #6b21a8;
                 border: 2px solid #e9d5ff;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 13px;
+                font-size: 12px;
                 color: #ffffff;
                 box-shadow: 0 0 16px #a855f7, 0 0 4px #ffffff;
                 flex-shrink: 0;
@@ -490,67 +487,84 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
                 gap: 5px;
               ">
                 <span style="color: #c084fc;">${master.code}</span>
-                <span style="font-size: 9px; padding: 1.5px 4px; border-radius: 3px; background: rgba(168,85,247,0.3); color: #e9d5ff;">RPI-4 MASTER</span>
+                <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; background: rgba(168,85,247,0.3); color: #e9d5ff;">RPI-4 MASTER</span>
               </div>
             </div>
           `,
           iconSize: [190, 28],
-          iconAnchor: [12, 14],
+          iconAnchor: [11, 14],
         });
 
         const marker = L.marker([master.lat, master.lng], { icon: masterIcon }).addTo(group);
-        
-        marker.on('click', () => {
-          setSelectedMaster(master);
-          setSelectedNode(null);
-        });
-
         marker.bindPopup(`
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #ffffff; background: #080a0f; padding: 14px; border-radius: 12px; border: 1.5px solid #a855f7; font-size: 12px; min-width: 300px; max-width: 340px; box-shadow: 0 12px 36px rgba(0,0,0,0.95);">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2e1065; padding-bottom: 8px; margin-bottom: 10px;">
+          <div style="font-family: 'JetBrains Mono', monospace, sans-serif; color: #ffffff; background: #090a10; padding: 14px; border-radius: 12px; border: 1.5px solid #a855f7; box-shadow: 0 16px 36px rgba(0,0,0,0.95); min-width: 290px; max-width: 320px;">
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; border-bottom: 1px solid #271442; padding-bottom: 8px; margin-bottom: 8px;">
               <div>
-                <strong style="color: #ffffff; font-size: 14px;">${master.name}</strong>
-                <div style="font-size: 10px; font-family: monospace; color: #c084fc; margin-top: 1px;">${master.code} • Sector ${master.sectorNum}</div>
+                <div style="color: #e9d5ff; font-size: 13px; font-weight: 800; letter-spacing: -0.01em;">${master.name}</div>
+                <div style="color: #94a3b8; font-size: 10px; margin-top: 2px;">
+                  📍 ${master.lat.toFixed(4)}°N, ${master.lng.toFixed(4)}°E • ${master.ip}
+                </div>
               </div>
-              <span style="padding: 3px 8px; border-radius: 999px; font-size: 9.5px; font-weight: 800; font-family: monospace; background: rgba(168, 85, 247, 0.2); color: #d8b4fe; border: 1px solid #a855f7;">
-                ROOT SINK
-              </span>
+              <span style="
+                font-size: 9px;
+                padding: 2px 7px;
+                border-radius: 9999px;
+                background: rgba(34, 197, 94, 0.2);
+                border: 1px solid #22c55e;
+                color: #4ade80;
+                text-transform: uppercase;
+                font-weight: 800;
+                letter-spacing: 0.05em;
+                white-space: nowrap;
+              ">● EDGE ONLINE</span>
             </div>
 
-            <!-- Hardware Spec Chip -->
-            <div style="font-size: 10px; font-family: monospace; color: #d8b4fe; background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.25); padding: 4px 8px; border-radius: 6px; margin-bottom: 10px;">
-              Raspberry Pi 4 Model B (Cortex-A72 • 4GB RAM)
+            <!-- Hardware Tag -->
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #c084fc; background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.25); padding: 4px 8px; border-radius: 6px; margin-bottom: 10px;">
+              <span style="font-weight: 700;">Raspberry Pi 4 Model B</span>
+              <span style="color: #e9d5ff; font-size: 9px;">Sector ${master.sectorNum} Hub</span>
             </div>
 
+            <!-- Master Spec Grid -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px;">
-              <div style="background: #120e1c; border: 1px solid #2e1065; border-radius: 8px; padding: 7px;">
-                <div style="font-size: 9px; font-weight: 700; color: #c084fc; text-transform: uppercase; margin-bottom: 3px;">🧠 Edge AI Engine</div>
-                <div style="font-size: 11px; font-weight: bold; color: #38bdf8; font-family: monospace;">TFLite Strata-Net</div>
-                <div style="font-size: 9.5px; color: #a855f7; font-family: monospace; margin-top: 2px;">${master.edgeAiInferenceFps || 14.6} FPS Live</div>
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid #271442; border-radius: 6px; padding: 6px 8px;">
+                <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Edge AI Engine</div>
+                <div style="font-size: 11px; font-weight: 700; color: #38bdf8; margin-top: 1px;">
+                  TFLite Strata-Net
+                </div>
+                <div style="font-size: 9px; color: #64748b;">${master.edgeAiInferenceFps || 14.6} FPS Live</div>
               </div>
 
-              <div style="background: #120e1c; border: 1px solid #2e1065; border-radius: 8px; padding: 7px;">
-                <div style="font-size: 9px; font-weight: 700; color: #c084fc; text-transform: uppercase; margin-bottom: 3px;">📶 Emergency GSM</div>
-                <div style="font-size: 11px; font-weight: bold; color: #4ade80; font-family: monospace;">SIM7600 4G LTE</div>
-                <div style="font-size: 9.5px; color: #4ade80; font-family: monospace; margin-top: 2px;">5/5 Bars • SMS Active</div>
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid #271442; border-radius: 6px; padding: 6px 8px;">
+                <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Emergency GSM</div>
+                <div style="font-size: 11px; font-weight: 700; color: #4ade80; margin-top: 1px;">
+                  SIM7600 Direct
+                </div>
+                <div style="font-size: 9px; color: #64748b;">5/5 Bars • SMS Ready</div>
               </div>
 
-              <div style="background: #120e1c; border: 1px solid #2e1065; border-radius: 8px; padding: 7px;">
-                <div style="font-size: 9px; font-weight: 700; color: #c084fc; text-transform: uppercase; margin-bottom: 3px;">📻 LoRa Inter-Bridge</div>
-                <div style="font-size: 11px; font-weight: bold; color: #ffffff; font-family: monospace;">SX1278 868MHz</div>
-                <div style="font-size: 9.5px; color: #94a3b8; font-family: monospace; margin-top: 2px;">Self-Healing ACK</div>
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid #271442; border-radius: 6px; padding: 6px 8px;">
+                <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">LoRa Inter-Master</div>
+                <div style="font-size: 11px; font-weight: 700; color: #c084fc; margin-top: 1px;">
+                  SX1278 868MHz
+                </div>
+                <div style="font-size: 9px; color: #64748b;">ACK Synced</div>
               </div>
 
-              <div style="background: #120e1c; border: 1px solid #2e1065; border-radius: 8px; padding: 7px;">
-                <div style="font-size: 9px; font-weight: 700; color: #c084fc; text-transform: uppercase; margin-bottom: 3px;">☀️ Power & MPPT</div>
-                <div style="font-size: 11px; font-weight: bold; color: #fbbf24; font-family: monospace;">120W Solar Array</div>
-                <div style="font-size: 9.5px; color: #22c55e; font-family: monospace; margin-top: 2px;">Bat: ${master.batteryPct}% • ${master.cpuTempC}°C</div>
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid #271442; border-radius: 6px; padding: 6px 8px;">
+                <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Solar MPPT</div>
+                <div style="font-size: 11px; font-weight: 700; color: #fbbf24; margin-top: 1px;">
+                  ${master.solarMpptWatts || 120}W Array
+                </div>
+                <div style="font-size: 9px; color: #64748b;">Batt: ${master.batteryPct || 99}%</div>
               </div>
             </div>
 
-            <div style="padding-top: 6px; border-top: 1px solid #2e1065; font-size: 9.5px; font-family: monospace; color: #a855f7; display: flex; justify-content: space-between;">
-              <span>SSID: ${master.wifiHotspotSsid}</span>
-              <span style="color: #4ade80;">● Online Relay</span>
+            <!-- Footer: Failover state -->
+            <div style="padding-top: 8px; border-top: 1px solid #271442; display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #d8b4fe;">
+              <span>Self-Healing Mesh</span>
+              <span style="color: #4ade80; font-weight: 600;">● Active Failover</span>
             </div>
           </div>
         `, { className: 'custom-leaflet-popup' });
@@ -560,40 +574,13 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     // D. RENDER INTEGRATED ESP32-S3 MULTI-SENSOR STATIONS (Node A, Node B, Node X, Node Y...)
     if (showNodes) {
       activeNodes.forEach((node) => {
-        const isDisabled = disabledNodeIds.includes(node.id);
         const trueStatus = calculateNodeStatus(node);
-        const readings = node.readings || ({} as any);
-
-        const tiltVal = Number(readings.tiltDeg ?? 0);
-        const vibVal = Number(readings.vibrationMmS ?? 0);
-        const rollVal = Number(readings.rollDeg ?? 0);
-        const pitchVal = Number(readings.pitchDeg ?? 0);
-        const moistureVal = Number(readings.soilMoisturePct ?? 50);
-        const tempVal = Number(readings.tempC ?? 27.5);
-        const humidityVal = Number(readings.humidityPct ?? 60);
-        const pressureVal = Number(readings.pressureHpa ?? 1012);
-        const batteryVal = Number(readings.batteryPct ?? 95);
-        const rssiVal = Number(readings.rssiDbm ?? -70);
-
-        const isDead = isDisabled || node.status === 'offline';
-        const displayStatus = isDead ? 'DEAD / OFFLINE' : trueStatus === 'critical' ? 'CRITICAL BREACH' : trueStatus === 'warning' ? 'WARNING (CREEP)' : 'ACTIVE (NORMAL)';
-        const statusColor = isDead ? '#94a3b8' :
-                            trueStatus === 'critical' ? '#ef4444' :
+        const statusColor = trueStatus === 'critical' ? '#ef4444' :
                             trueStatus === 'warning' ? '#f59e0b' :
                             '#22c55e';
-        const statusBg = isDead ? 'rgba(148, 163, 184, 0.15)' :
-                         trueStatus === 'critical' ? 'rgba(239, 68, 68, 0.25)' :
-                         trueStatus === 'warning' ? 'rgba(245, 158, 11, 0.25)' :
-                         'rgba(34, 197, 94, 0.25)';
 
-        const moistureStatusText = moistureVal > 85 ? '🚨 LIQUEFACTION RISK' :
-                                   moistureVal > 75 ? '⚠️ HIGH SATURATION' :
-                                   '✓ OPTIMAL DRAINAGE';
-        const moistureColor = moistureVal > 85 ? '#ef4444' :
-                              moistureVal > 75 ? '#f59e0b' :
-                              '#22c55e';
-
-        const isPulsing = !isDead && (trueStatus === 'critical' || trueStatus === 'warning');
+        const isPulsing = trueStatus === 'critical' || trueStatus === 'warning';
+        const readings = node.readings || ({} as any);
 
         const nodeIcon = L.divIcon({
           className: 'custom-node-pin',
@@ -643,11 +630,11 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
                   font-size: 9px;
                   padding: 1.5px 4px;
                   border-radius: 3px;
-                  background: ${statusBg};
+                  background: ${trueStatus === 'critical' ? 'rgba(239, 68, 68, 0.4)' : trueStatus === 'warning' ? 'rgba(245, 158, 11, 0.4)' : 'rgba(34, 197, 94, 0.35)'};
                   color: ${statusColor};
                   text-transform: uppercase;
                   font-weight: 800;
-                ">${isDead ? 'DEAD' : trueStatus}</span>
+                ">${trueStatus}</span>
               </div>
             </div>
           `,
@@ -658,68 +645,124 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
         const marker = L.marker([node.lat, node.lng], { icon: nodeIcon }).addTo(group);
 
         marker.on('click', () => {
-          setSelectedNode(node);
-          setSelectedMaster(null);
           onSelectNode?.(node);
         });
 
+        const tiltDeg = typeof readings.tiltDeg === 'number' ? readings.tiltDeg : 0;
+        const vibrationMmS = typeof readings.vibrationMmS === 'number' ? readings.vibrationMmS : 0;
+        const soilMoisturePct = typeof readings.soilMoisturePct === 'number' ? readings.soilMoisturePct : 50;
+        const tempC = typeof readings.tempC === 'number' ? readings.tempC : 27.5;
+        const humidityPct = typeof readings.humidityPct === 'number' ? readings.humidityPct : 60;
+        const pressureHpa = typeof readings.pressureHpa === 'number' ? readings.pressureHpa : 1012;
+        const batteryPct = typeof readings.batteryPct === 'number' ? readings.batteryPct : 95;
+        const rssiDbm = typeof readings.rssiDbm === 'number' ? readings.rssiDbm : -70;
+
+        const tiltColor = tiltDeg >= 5.0 ? '#ef4444' : tiltDeg >= 2.5 ? '#f59e0b' : '#38bdf8';
+        const vibColor = vibrationMmS >= 10.0 ? '#ef4444' : vibrationMmS >= 4.0 ? '#f59e0b' : '#38bdf8';
+        const moistColor = soilMoisturePct >= 80 ? '#ef4444' : soilMoisturePct >= 65 ? '#f59e0b' : '#22c55e';
+        const battColor = batteryPct < 20 ? '#ef4444' : batteryPct < 50 ? '#f59e0b' : '#22c55e';
+
         marker.bindPopup(`
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #ffffff; background: #080a0f; padding: 14px; border-radius: 12px; border: 1.5px solid ${statusColor}; font-size: 12px; min-width: 300px; max-width: 330px; box-shadow: 0 12px 36px rgba(0,0,0,0.95);">
+          <div style="font-family: 'JetBrains Mono', monospace, sans-serif; color: #ffffff; background: #090c10; padding: 14px; border-radius: 12px; border: 1.5px solid ${statusColor}; box-shadow: 0 16px 36px rgba(0,0,0,0.95); min-width: 290px; max-width: 320px;">
             <!-- Header -->
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e232d; padding-bottom: 8px; margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; border-bottom: 1px solid #1e2430; padding-bottom: 8px; margin-bottom: 8px;">
               <div>
-                <strong style="color: #ffffff; font-size: 13.5px;">${node.name}</strong>
-                <div style="font-size: 10.5px; font-family: monospace; color: #94a3b8; margin-top: 1px;">${node.code} • Sector ${node.sector}</div>
+                <div style="color: #ffffff; font-size: 13px; font-weight: 800; letter-spacing: -0.01em;">${node.name}</div>
+                <div style="color: #64748b; font-size: 10px; margin-top: 2px;">
+                  📍 ${node.lat.toFixed(4)}°N, ${node.lng.toFixed(4)}°E
+                </div>
               </div>
-              <span style="padding: 3px 8px; border-radius: 999px; font-size: 9.5px; font-weight: 800; font-family: monospace; background: ${statusBg}; color: ${statusColor}; border: 1px solid ${statusColor};">
-                ${displayStatus}
-              </span>
+              <span style="
+                font-size: 9px;
+                padding: 2px 7px;
+                border-radius: 9999px;
+                background: ${trueStatus === 'critical' ? 'rgba(239, 68, 68, 0.25)' : trueStatus === 'warning' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(34, 197, 94, 0.25)'};
+                border: 1px solid ${statusColor};
+                color: ${statusColor};
+                text-transform: uppercase;
+                font-weight: 800;
+                letter-spacing: 0.05em;
+                white-space: nowrap;
+              ">● ${trueStatus}</span>
             </div>
 
             <!-- Hardware Tag -->
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #38bdf8; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); padding: 4px 8px; border-radius: 6px; margin-bottom: 10px;">
-              <span>📡 ESP32-S3 Pod (BNO085 + BME280 + VWC)</span>
-              <span style="color: #cbd5e1;">Mesh Node</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #38bdf8; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); padding: 4px 8px; border-radius: 6px; margin-bottom: 10px;">
+              <span style="font-weight: 700;">ESP32-S3 Telemetry Pod</span>
+              <span style="color: #94a3b8; font-size: 9px;">BNO085 • BME280</span>
             </div>
 
-            <!-- 4 Structured Telemetry Tiles -->
+            <!-- Metrics Grid -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px;">
-              <!-- Box 1: BNO085 9-DOF IMU -->
-              <div style="background: #11141b; border: 1px solid #1f2530; border-radius: 8px; padding: 7px;">
-                <div style="font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 3px;">🧭 BNO085 IMU</div>
-                <div style="font-size: 11px; margin-bottom: 2px;">Tilt: <strong style="color: ${tiltVal >= 3.5 ? '#ef4444' : '#ffffff'}; font-family: monospace;">${tiltVal.toFixed(2)}°</strong></div>
-                <div style="font-size: 11px; margin-bottom: 2px;">Vib: <strong style="color: ${vibVal >= 4.5 ? '#ef4444' : '#ffffff'}; font-family: monospace;">${vibVal.toFixed(1)} mm/s</strong></div>
-                <div style="font-size: 9px; color: #64748b; font-family: monospace;">R: ${rollVal.toFixed(1)}° | P: ${pitchVal.toFixed(1)}°</div>
+              <!-- Tilt -->
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid #1a202c; border-radius: 6px; padding: 6px 8px;">
+                <div style="font-size: 9px; color: #718096; text-transform: uppercase; font-weight: 600;">BNO085 Tilt</div>
+                <div style="font-size: 13px; font-weight: 800; color: ${tiltColor}; margin-top: 1px;">
+                  ${tiltDeg.toFixed(2)}°
+                </div>
               </div>
 
-              <!-- Box 2: Capacitive Soil Moisture -->
-              <div style="background: #11141b; border: 1px solid #1f2530; border-radius: 8px; padding: 7px;">
-                <div style="font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 3px;">💧 Soil Hydrology</div>
-                <div style="font-size: 11px; margin-bottom: 2px;">Moisture: <strong style="color: ${moistureColor}; font-family: monospace;">${moistureVal.toFixed(1)}%</strong></div>
-                <div style="font-size: 9px; color: ${moistureColor}; font-weight: 700; margin-top: 3px;">${moistureStatusText}</div>
+              <!-- Vibration -->
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid #1a202c; border-radius: 6px; padding: 6px 8px;">
+                <div style="font-size: 9px; color: #718096; text-transform: uppercase; font-weight: 600;">BNO085 Vib</div>
+                <div style="font-size: 13px; font-weight: 800; color: ${vibColor}; margin-top: 1px;">
+                  ${vibrationMmS.toFixed(1)} <span style="font-size: 9px; font-weight: 500; color: #94a3b8;">mm/s</span>
+                </div>
               </div>
 
-              <!-- Box 3: BME280 Atmospheric -->
-              <div style="background: #11141b; border: 1px solid #1f2530; border-radius: 8px; padding: 7px;">
-                <div style="font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 3px;">🌡️ BME280 Climate</div>
-                <div style="font-size: 11px; margin-bottom: 2px;">Temp: <strong style="color: #ffffff; font-family: monospace;">${tempVal.toFixed(1)}°C</strong></div>
-                <div style="font-size: 11px; margin-bottom: 2px;">Humidity: <strong style="color: #ffffff; font-family: monospace;">${humidityVal}%</strong></div>
-                <div style="font-size: 9px; color: #64748b; font-family: monospace;">${pressureVal} hPa</div>
+              <!-- Soil Moisture -->
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid #1a202c; border-radius: 6px; padding: 6px 8px;">
+                <div style="font-size: 9px; color: #718096; text-transform: uppercase; font-weight: 600;">Soil Moisture</div>
+                <div style="font-size: 13px; font-weight: 800; color: ${moistColor}; margin-top: 1px;">
+                  ${soilMoisturePct.toFixed(0)}%
+                </div>
               </div>
 
-              <!-- Box 4: Power & Mesh Network -->
-              <div style="background: #11141b; border: 1px solid #1f2530; border-radius: 8px; padding: 7px;">
-                <div style="font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 3px;">⚡ Power & Mesh</div>
-                <div style="font-size: 11px; margin-bottom: 2px;">Battery: <strong style="color: #22c55e; font-family: monospace;">${batteryVal}%</strong></div>
-                <div style="font-size: 11px; margin-bottom: 2px;">RSSI: <strong style="color: #ffffff; font-family: monospace;">${rssiVal} dBm</strong></div>
-                <div style="font-size: 9px; color: #38bdf8; font-family: monospace;">Hop ${node.meshHopCount || 1} • Connected</div>
+              <!-- Temperature -->
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid #1a202c; border-radius: 6px; padding: 6px 8px;">
+                <div style="font-size: 9px; color: #718096; text-transform: uppercase; font-weight: 600;">BME280 Temp</div>
+                <div style="font-size: 13px; font-weight: 800; color: #f1f5f9; margin-top: 1px;">
+                  ${tempC.toFixed(1)}°C
+                </div>
+              </div>
+
+              <!-- Humidity -->
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid #1a202c; border-radius: 6px; padding: 6px 8px;">
+                <div style="font-size: 9px; color: #718096; text-transform: uppercase; font-weight: 600;">BME280 Hum</div>
+                <div style="font-size: 13px; font-weight: 800; color: #f1f5f9; margin-top: 1px;">
+                  ${humidityPct.toFixed(0)}%
+                </div>
+              </div>
+
+              <!-- Pressure -->
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid #1a202c; border-radius: 6px; padding: 6px 8px;">
+                <div style="font-size: 9px; color: #718096; text-transform: uppercase; font-weight: 600;">BME280 Baro</div>
+                <div style="font-size: 12px; font-weight: 800; color: #f1f5f9; margin-top: 1px;">
+                  ${pressureHpa.toFixed(0)} <span style="font-size: 9px; font-weight: 500; color: #94a3b8;">hPa</span>
+                </div>
+              </div>
+
+              <!-- Battery -->
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid #1a202c; border-radius: 6px; padding: 6px 8px;">
+                <div style="font-size: 9px; color: #718096; text-transform: uppercase; font-weight: 600;">Battery</div>
+                <div style="font-size: 13px; font-weight: 800; color: ${battColor}; margin-top: 1px;">
+                  ${batteryPct}%
+                </div>
+              </div>
+
+              <!-- RSSI -->
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid #1a202c; border-radius: 6px; padding: 6px 8px;">
+                <div style="font-size: 9px; color: #718096; text-transform: uppercase; font-weight: 600;">LoRa RSSI</div>
+                <div style="font-size: 13px; font-weight: 800; color: #f1f5f9; margin-top: 1px;">
+                  ${rssiDbm} <span style="font-size: 9px; font-weight: 500; color: #94a3b8;">dBm</span>
+                </div>
               </div>
             </div>
 
-            <!-- Footer -->
-            <div style="padding-top: 6px; border-top: 1px solid #1a1e26; display: flex; justify-content: space-between; align-items: center; font-size: 9.5px; font-family: monospace; color: #64748b;">
-              <span>Uplink: <strong style="color: #a855f7;">${node.masterId || (node.sector === 2 ? 'Sector-2 Master' : 'Sector-1 Master')}</strong></span>
-              <span style="color: #22c55e;">● Live Telemetry</span>
+            <!-- Footer: Mesh Routing -->
+            <div style="padding-top: 8px; border-top: 1px solid #1e2430; display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #94a3b8;">
+              <span>Uplink: <strong style="color: #38bdf8;">${node.masterId || (node.sector === 2 ? 'Sector-2 Master' : 'Sector-1 Master')}</strong></span>
+              <span style="background: #1e293b; padding: 1px 6px; border-radius: 4px; color: #cbd5e1; font-weight: 600;">Hop ${node.meshHopCount || 1}</span>
             </div>
           </div>
         `, { className: 'custom-leaflet-popup' });
@@ -767,14 +810,17 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
 
         const marker = L.marker([rep.lat, rep.lng], { icon: crackIcon }).addTo(group);
         marker.bindPopup(`
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #fff; background: #0c0d10; padding: 12px; border-radius: 10px; border: 1.5px solid ${pinColor}; font-size: 12px; max-width: 250px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <strong style="color: ${pinColor}; font-size: 13px;">${rep.id}</strong>
-              <span style="font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(239,68,68,0.2); color: ${pinColor}; font-weight: bold;">${rep.status}</span>
+          <div style="font-family: 'JetBrains Mono', monospace, sans-serif; color: #ffffff; background: #090b10; padding: 12px; border-radius: 10px; border: 1.5px solid ${pinColor}; box-shadow: 0 16px 36px rgba(0,0,0,0.95); min-width: 250px; max-width: 280px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e2430; padding-bottom: 6px; margin-bottom: 8px;">
+              <strong style="color: #ffffff; font-size: 12px;">Report ${rep.id}</strong>
+              <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: ${isCorroborated ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'}; color: ${pinColor}; font-weight: bold;">
+                ${rep.status}
+              </span>
             </div>
-            <p style="margin: 6px 0; color: #cbd5e1; font-size: 11.5px; line-height: 1.3;">${rep.description}</p>
-            <div style="font-size: 10px; color: #94a3b8; font-family: monospace; padding-top: 6px; border-top: 1px solid #222;">
-              Width: <strong style="color: #fff;">${rep.crackWidthEstimateMm}mm</strong> • ${rep.zone}
+            <p style="margin: 0 0 8px 0; color: #cbd5e1; font-size: 11px; line-height: 1.4;">${rep.description}</p>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid #1e2430; border-radius: 6px; padding: 6px 8px; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between;">
+              <span>Width: <strong style="color: ${pinColor}; font-size: 11px;">${rep.crackWidthEstimateMm}mm</strong></span>
+              <span>Zone: <strong style="color: #ffffff;">${rep.zone}</strong></span>
             </div>
           </div>
         `, { className: 'custom-leaflet-popup' });
@@ -858,10 +904,15 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
 
         const marker = L.marker([ap.lat, ap.lng], { icon: shelterIcon }).addTo(group);
         marker.bindPopup(`
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #fff; background: #0c0d10; padding: 12px; border-radius: 10px; border: 1.5px solid #22c55e; font-size: 12px;">
-            <strong style="color: #22c55e; font-size: 13px;">${ap.name}</strong>
-            <div style="color: #cbd5e1; margin-top: 4px; font-size: 11.5px;">Capacity: <strong>${ap.currentCheckedIn} / ${ap.capacityPersons} persons</strong></div>
-            <div style="font-size: 10px; color: #94a3b8; margin-top: 6px; border-top: 1px solid #222; padding-top: 4px; font-family: monospace;">
+          <div style="font-family: 'JetBrains Mono', monospace, sans-serif; color: #ffffff; background: #06150c; padding: 12px; border-radius: 10px; border: 1.5px solid #22c55e; box-shadow: 0 16px 36px rgba(0,0,0,0.95); min-width: 250px; max-width: 280px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #14532d; padding-bottom: 6px; margin-bottom: 8px;">
+              <strong style="color: #4ade80; font-size: 13px;">⌂ ${ap.name}</strong>
+              <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(34, 197, 94, 0.2); color: #22c55e; font-weight: bold;">SAFE ZONE</span>
+            </div>
+            <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 6px;">
+              Capacity: <strong style="color: #ffffff;">${ap.currentCheckedIn} / ${ap.capacityPersons} persons</strong>
+            </div>
+            <div style="font-size: 10px; color: #86efac; border-top: 1px solid #14532d; padding-top: 6px; margin-top: 6px;">
               Officer: ${ap.contactOfficer} (${ap.officerPhone})
             </div>
           </div>
@@ -869,7 +920,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
       });
     }
 
-  }, [activeNodes, reports, assemblyPoints, rainfallRate, showHeatmap, showNodes, showMasters, showMeshLinks, showMineWorkings, showCrackPins, showShelters, mapCenter, disabledNodeIds]);
+  }, [activeNodes, reports, assemblyPoints, rainfallRate, showHeatmap, showNodes, showMasters, showMeshLinks, showMineWorkings, showCrackPins, showShelters, mapCenter]);
 
   return (
     <div className="space-y-4 select-none">
@@ -932,9 +983,9 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
               type="checkbox"
               checked={showMineWorkings}
               onChange={(e) => setShowMineWorkings(e.target.checked)}
-              className="accent-[#38bdf8] w-3.5 h-3.5 rounded"
+              className="accent-[#0284c7] w-3.5 h-3.5 rounded"
             />
-            <span className={showMineWorkings ? 'text-[#38bdf8] font-medium' : ''}>Gallery Void</span>
+            <span className={showMineWorkings ? 'text-[#38bdf8] font-medium' : ''}>Void Gallery</span>
           </label>
 
           <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
@@ -946,7 +997,6 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
             />
             <span className={showShelters ? 'text-white font-medium' : ''}>Shelters</span>
           </label>
-
         </div>
 
         {/* Basemap Style Toggle */}
@@ -970,8 +1020,8 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
         </div>
       </div>
 
-      {/* 2. LEAFLET MAP CONTAINER WITH ON-MAP INSPECTOR HUD */}
-      <div className="relative w-full h-[540px] sm:h-[640px] rounded-[18px] border border-[#181b20] overflow-hidden bg-[#000000] shadow-2xl">
+      {/* 2. LEAFLET MAP CONTAINER */}
+      <div className="relative w-full h-[520px] sm:h-[620px] rounded-[18px] border border-[#181b20] overflow-hidden bg-[#000000] shadow-2xl">
         <div ref={mapContainerRef} className="w-full h-full z-10" />
 
         {/* Top-Right Legend Pill Overlay */}
@@ -1016,192 +1066,6 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
             </span>
           </div>
         </div>
-
-        {/* Bottom-Left Live Node / Master Inspector Drawer (Interactive HUD) */}
-        {(selectedNode || selectedMaster) && (
-          <div className="absolute bottom-4 left-4 z-30 w-[92%] sm:w-[380px] max-w-[400px] rounded-[16px] bg-[#050608]/95 border border-[#282d38] backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.95)] p-4 text-xs font-mono animate-fadeIn pointer-events-auto transition-all">
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#1c202a]">
-              <div className="flex items-center gap-2">
-                <div className={`w-2.5 h-2.5 rounded-full ${
-                  selectedMaster ? 'bg-[#a855f7] shadow-[0_0_8px_#a855f7]' :
-                  disabledNodeIds.includes(selectedNode?.id || '') ? 'bg-[#555555]' :
-                  calculateNodeStatus(selectedNode!) === 'critical' ? 'bg-[#ef4444] animate-ping' :
-                  calculateNodeStatus(selectedNode!) === 'warning' ? 'bg-[#f59e0b]' :
-                  'bg-[#22c55e]'
-                }`} />
-                <span className="text-[13px] font-bold text-white tracking-tight">
-                  {selectedMaster ? selectedMaster.name : selectedNode?.name}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setIsInspectorExpanded(!isInspectorExpanded)}
-                  className="p-1 rounded-md text-[#888] hover:text-white hover:bg-white/10 transition-colors"
-                  title={isInspectorExpanded ? 'Collapse' : 'Expand'}
-                >
-                  {isInspectorExpanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedNode(null);
-                    setSelectedMaster(null);
-                  }}
-                  className="p-1 rounded-md text-[#888] hover:text-white hover:bg-white/10 transition-colors"
-                  title="Close Inspector"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
-
-            {/* Inspector Content */}
-            {isInspectorExpanded && (
-              <div className="mt-3 space-y-3">
-                {selectedMaster ? (
-                  /* Master Hub Inspector */
-                  <div className="space-y-2.5">
-                    <div className="p-2.5 rounded-lg bg-[#0e0a16] border border-[#2e1065] text-[#d8b4fe]">
-                      <div className="text-[10px] uppercase font-bold text-[#c084fc]">Edge AI Master Station</div>
-                      <div className="text-white font-bold text-xs mt-0.5">{selectedMaster.hardwareModel}</div>
-                      <div className="text-[11px] text-[#a855f7] mt-1">{selectedMaster.code} • IP: {selectedMaster.ip}</div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-[11px]">
-                      <div className="p-2 rounded bg-white/[0.02] border border-white/5">
-                        <span className="text-[10px] text-[#717682] block">Edge AI Model</span>
-                        <span className="text-[#38bdf8] font-bold">Strata-Net (14.6 FPS)</span>
-                      </div>
-                      <div className="p-2 rounded bg-white/[0.02] border border-white/5">
-                        <span className="text-[10px] text-[#717682] block">Emergency GSM</span>
-                        <span className="text-[#4ade80] font-bold">SIM7600 (5 Bars)</span>
-                      </div>
-                      <div className="p-2 rounded bg-white/[0.02] border border-white/5">
-                        <span className="text-[10px] text-[#717682] block">Solar MPPT</span>
-                        <span className="text-[#fbbf24] font-bold">120W • 99% Battery</span>
-                      </div>
-                      <div className="p-2 rounded bg-white/[0.02] border border-white/5">
-                        <span className="text-[10px] text-[#717682] block">Inter-Master Bridge</span>
-                        <span className="text-[#c084fc] font-bold">SX1278 LoRa ACK</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : selectedNode ? (
-                  /* Multi-Sensor ESP32-S3 Node Inspector */
-                  <div className="space-y-3">
-                    {/* Status Pill & Hardware Model */}
-                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] border border-white/5">
-                      <div>
-                        <div className="text-[10px] text-[#717682]">Hardware Station</div>
-                        <div className="text-white font-bold text-xs">ESP32-S3 Multi-Sensor Pod</div>
-                      </div>
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                        disabledNodeIds.includes(selectedNode.id) ? 'bg-white/10 text-white/50 border border-white/20' :
-                        calculateNodeStatus(selectedNode) === 'critical' ? 'bg-[#ef4444]/20 text-[#ef4444] border border-[#ef4444]' :
-                        calculateNodeStatus(selectedNode) === 'warning' ? 'bg-[#f59e0b]/20 text-[#f59e0b] border border-[#f59e0b]' :
-                        'bg-[#22c55e]/20 text-[#22c55e] border border-[#22c55e]'
-                      }`}>
-                        {disabledNodeIds.includes(selectedNode.id) ? 'DEAD / OFFLINE' : calculateNodeStatus(selectedNode)}
-                      </span>
-                    </div>
-
-                    {/* Visual Gauges */}
-                    <div className="space-y-2">
-                      {/* Tilt Gauge */}
-                      <div>
-                        <div className="flex justify-between text-[11px] mb-1">
-                          <span className="text-[#828894]">🧭 BNO085 Tilt Slope</span>
-                          <span className={`font-bold ${(selectedNode.readings?.tiltDeg ?? 0) >= 3.5 ? 'text-[#ef4444]' : 'text-white'}`}>
-                            {(selectedNode.readings?.tiltDeg ?? 0).toFixed(2)}° <span className="text-[#717682] font-normal">/ 6.0° max</span>
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 bg-[#14171d] rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              (selectedNode.readings?.tiltDeg ?? 0) >= 6.0 ? 'bg-[#ef4444]' :
-                              (selectedNode.readings?.tiltDeg ?? 0) >= 3.5 ? 'bg-[#f59e0b]' :
-                              'bg-[#22c55e]'
-                            }`}
-                            style={{ width: `${Math.min(100, ((selectedNode.readings?.tiltDeg ?? 0) / 6.0) * 100)}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Soil Moisture Gauge */}
-                      <div>
-                        <div className="flex justify-between text-[11px] mb-1">
-                          <span className="text-[#828894]">💧 Soil Moisture (VWC)</span>
-                          <span className={`font-bold ${(selectedNode.readings?.soilMoisturePct ?? 50) >= 75 ? 'text-[#ef4444]' : 'text-[#22c55e]'}`}>
-                            {(selectedNode.readings?.soilMoisturePct ?? 50).toFixed(1)}% <span className="text-[#717682] font-normal">/ 85% sat</span>
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 bg-[#14171d] rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              (selectedNode.readings?.soilMoisturePct ?? 50) >= 85 ? 'bg-[#ef4444]' :
-                              (selectedNode.readings?.soilMoisturePct ?? 50) >= 75 ? 'bg-[#f59e0b]' :
-                              'bg-[#38bdf8]'
-                            }`}
-                            style={{ width: `${Math.min(100, (selectedNode.readings?.soilMoisturePct ?? 50))}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* PPV Vibration Gauge */}
-                      <div>
-                        <div className="flex justify-between text-[11px] mb-1">
-                          <span className="text-[#828894]">⚡ PPV Peak Vibration</span>
-                          <span className="text-white font-bold">
-                            {(selectedNode.readings?.vibrationMmS ?? 0).toFixed(1)} mm/s
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 bg-[#14171d] rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-[#a855f7] transition-all duration-500"
-                            style={{ width: `${Math.min(100, ((selectedNode.readings?.vibrationMmS ?? 0) / 12.0) * 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Environment & Network Strip */}
-                    <div className="grid grid-cols-2 gap-2 text-[10.5px] p-2 rounded-lg bg-black/40 border border-white/5">
-                      <div className="text-[#94a3b8]">
-                        Temp: <span className="text-white font-bold">{selectedNode.readings?.tempC ?? 27.5}°C</span>
-                      </div>
-                      <div className="text-[#94a3b8]">
-                        Humidity: <span className="text-white font-bold">{selectedNode.readings?.humidityPct ?? 60}%</span>
-                      </div>
-                      <div className="text-[#94a3b8]">
-                        Battery: <span className="text-[#22c55e] font-bold">{selectedNode.readings?.batteryPct ?? 95}%</span>
-                      </div>
-                      <div className="text-[#94a3b8]">
-                        RSSI: <span className="text-white font-bold">{selectedNode.readings?.rssiDbm ?? -70} dBm</span>
-                      </div>
-                    </div>
-
-                    {/* Dynamic Failure Simulation Toggle */}
-                    <div className="pt-2 border-t border-[#1c202a]">
-                      <button
-                        onClick={() => toggleNodeDisabled(selectedNode.id)}
-                        className={`w-full py-2 rounded-lg text-[11px] font-bold transition-all ${
-                          disabledNodeIds.includes(selectedNode.id)
-                            ? 'bg-[#22c55e] text-black hover:bg-[#16a34a]'
-                            : 'border border-[#ef4444]/40 bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444]/20'
-                        }`}
-                      >
-                        {disabledNodeIds.includes(selectedNode.id)
-                          ? `✓ RESTORE NODE ONLINE (${selectedNode.name.split(' ')[0]} ${selectedNode.name.split(' ')[1] || ''})`
-                          : `⚠ SIMULATE NODE FAILURE / DEAD STATE`}
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
