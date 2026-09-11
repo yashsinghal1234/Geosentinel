@@ -76,22 +76,45 @@
   letter-spacing: -0.01em;
 }
 
-/* Custom Leaflet Dark Mode Tiles & Popups (Zero API Key & Zero Watermark) */
+/* Custom Leaflet True Pitch-Black Dark Mode Tiles & Popups (Zero API Key & Zero Watermark) */
+.leaflet-container {
+  background: #000000 !important;
+  font-family: var(--font-inter) !important;
+  outline: none;
+}
+
+.leaflet-tile-pane,
+.leaflet-pane,
+.leaflet-layer,
+.leaflet-tile-container {
+  background: #000000 !important;
+}
+
 .leaflet-tile-dark {
-  filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(95%);
+  filter: invert(100%) hue-rotate(180deg) brightness(42%) contrast(210%) saturate(0%) !important;
+  background: #000000 !important;
+}
+
+.leaflet-tile-satellite {
+  filter: brightness(85%) contrast(110%);
+}
+
+.leaflet-tile-street-dark {
+  filter: invert(100%) hue-rotate(180deg) brightness(70%) contrast(160%) saturate(20%) !important;
+  background: #000000 !important;
 }
 
 .custom-leaflet-popup .leaflet-popup-content-wrapper {
-  background: #0a0c0f !important;
+  background: #000000 !important;
   color: #ffffff !important;
   border: 1px solid #232731 !important;
   border-radius: 12px !important;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.9) !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.95) !important;
   padding: 0 !important;
 }
 
 .custom-leaflet-popup .leaflet-popup-tip {
-  background: #0a0c0f !important;
+  background: #000000 !important;
   border: 1px solid #232731 !important;
 }
 

@@ -45,8 +45,8 @@ export const calculateNodeStatus = (node: SensorNode): 'critical' | 'warning' | 
 export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
   const { nodes, reports, assemblyPoints, rainfallRate } = useGeoSentinel();
 
-  // Layer Toggles: 'dark' (Esri Dark Gray), 'osm' (OSM Inverted Dark), 'satellite' (Esri Satellite)
-  const [basemapType, setBasemapType] = useState<'dark' | 'osm' | 'satellite'>('dark');
+  // Layer Toggles: 'dark' (Pitch-Black Dark OSM), 'satellite' (Esri High-Res Satellite), 'street-dark' (Tactical Street Dark)
+  const [basemapType, setBasemapType] = useState<'dark' | 'satellite' | 'street-dark'>('dark');
   const [showHeatmap, setShowHeatmap] = useState<boolean>(true);
   const [showNodes, setShowNodes] = useState<boolean>(true);
   const [showMineWorkings, setShowMineWorkings] = useState<boolean>(true);
@@ -61,29 +61,39 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
   // Center Coordinates: Jharia Coalfield Sector 4 / Open Pit
   const mapCenter = useMemo<[number, number]>(() => [23.7482, 86.4195], []);
 
-  const getTileConfig = (type: 'dark' | 'osm' | 'satellite') => {
+  const getTileConfig = (type: 'dark' | 'satellite' | 'street-dark') => {
     switch (type) {
       case 'satellite':
         return {
           url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          className: '',
-          maxZoom: 19
+          className: 'leaflet-tile-satellite',
+          subdomains: [] as string[],
+          maxZoom: 20,
+          maxNativeZoom: 17,
+          attribution: '© Esri World Imagery'
         };
-      case 'osm':
+      case 'street-dark':
         return {
-          url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          className: 'leaflet-tile-dark',
-          maxZoom: 19
+          url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          className: 'leaflet-tile-street-dark',
+          subdomains: ['a', 'b', 'c'],
+          maxZoom: 20,
+          maxNativeZoom: 16,
+          attribution: '© OpenStreetMap'
         };
       case 'dark':
       default:
         return {
-          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-          className: '',
-          maxZoom: 19
+          url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          className: 'leaflet-tile-dark',
+          subdomains: ['a', 'b', 'c'],
+          maxZoom: 20,
+          maxNativeZoom: 16,
+          attribution: '© OpenStreetMap Pitch Black'
         };
     }
   };
+
 
   // 1. Initialize Leaflet Map
   useEffect(() => {
@@ -92,9 +102,9 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
 
     const map = L.map(mapContainerRef.current, {
       center: mapCenter,
-      zoom: 15,
-      minZoom: 13,
-      maxZoom: 18,
+      zoom: 16,
+      minZoom: 10,
+      maxZoom: 20,
       zoomControl: false,
       attributionControl: false,
     });
@@ -104,7 +114,9 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
 
     const config = getTileConfig(basemapType);
     const tiles = L.tileLayer(config.url, {
+      subdomains: config.subdomains.length > 0 ? config.subdomains : 'abc',
       maxZoom: config.maxZoom,
+      maxNativeZoom: config.maxNativeZoom,
       className: config.className,
     }).addTo(map);
 
@@ -115,28 +127,52 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
 
     mapInstanceRef.current = map;
 
-    // Invalidate size to ensure proper tile loading
-    setTimeout(() => {
+    // Trigger invalidateSize and fitBounds reliably across rendering frames
+    const t1 = setTimeout(() => {
       map.invalidateSize();
-    }, 200);
+      const nodeCoords = nodes.map(n => [n.lat, n.lng] as [number, number]);
+      if (nodeCoords.length > 0) {
+        const bounds = L.latLngBounds(nodeCoords);
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+      }
+    }, 100);
+
+    const t2 = setTimeout(() => {
+      map.invalidateSize();
+    }, 400);
+
+    const handleWindowResize = () => {
+      map.invalidateSize();
+    };
+    window.addEventListener('resize', handleWindowResize);
 
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener('resize', handleWindowResize);
       map.remove();
       mapInstanceRef.current = null;
     };
   }, []);
 
-  // 2. Switch Basemap (Dark Technical vs Detailed vs Satellite)
+  // 2. Switch Basemap (Pitch-Black Dark vs Satellite vs Street Dark)
   useEffect(() => {
-    if (!mapInstanceRef.current || !tileLayerRef.current) return;
-    const config = getTileConfig(basemapType);
-    tileLayerRef.current.setUrl(config.url);
-    
-    // Update className for CSS filtering if needed
-    const container = tileLayerRef.current.getContainer();
-    if (container) {
-      container.className = `leaflet-tile-container leaflet-zoom-animated ${config.className}`;
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
     }
+
+    const config = getTileConfig(basemapType);
+    const newTiles = L.tileLayer(config.url, {
+      subdomains: config.subdomains.length > 0 ? config.subdomains : 'abc',
+      maxZoom: config.maxZoom,
+      maxNativeZoom: config.maxNativeZoom,
+      className: config.className,
+    }).addTo(map);
+
+    tileLayerRef.current = newTiles;
   }, [basemapType]);
 
   // 3. Render All Map Layers & Data (Heatmap Plumes, Status Nodes, Chips, Polygons)
@@ -499,7 +535,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
           </label>
         </div>
 
-        {/* Basemap Style Toggle: Zero Watermark Esri Dark Canvas / OSM / Satellite */}
+        {/* Basemap Style Toggle: Zero Watermark Pitch-Black / Satellite / Slate */}
         <div className="flex items-center gap-1.5 p-1 rounded-lg border border-[#232731] bg-[#121418]">
           <button
             onClick={() => setBasemapType('dark')}
@@ -507,15 +543,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
               basemapType === 'dark' ? 'bg-[#22262f] text-[#a3e635] font-bold' : 'text-[#717682] hover:text-white'
             }`}
           >
-            Dark Canvas
-          </button>
-          <button
-            onClick={() => setBasemapType('osm')}
-            className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer ${
-              basemapType === 'osm' ? 'bg-[#22262f] text-[#a3e635] font-bold' : 'text-[#717682] hover:text-white'
-            }`}
-          >
-            OSM Roads
+            Pitch Black
           </button>
           <button
             onClick={() => setBasemapType('satellite')}
@@ -525,15 +553,23 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
           >
             Satellite
           </button>
+          <button
+            onClick={() => setBasemapType('street-dark')}
+            className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+              basemapType === 'street-dark' ? 'bg-[#22262f] text-[#a3e635] font-bold' : 'text-[#717682] hover:text-white'
+            }`}
+          >
+            Tactical Dark
+          </button>
         </div>
       </div>
 
       {/* 2. LEAFLET MAP CONTAINER */}
-      <div className="relative w-full h-[520px] sm:h-[620px] rounded-[18px] border border-[#181b20] overflow-hidden bg-[#050608] shadow-2xl">
+      <div className="relative w-full h-[520px] sm:h-[620px] rounded-[18px] border border-[#181b20] overflow-hidden bg-[#000000] shadow-2xl">
         <div ref={mapContainerRef} className="w-full h-full z-10" />
 
         {/* Top-Right Legend Pill Overlay */}
-        <div className="absolute top-4 right-4 z-20 p-3 rounded-[14px] bg-[#0c0d10]/95 border border-[#23272f] backdrop-blur-md shadow-2xl text-[11px] font-mono space-y-2 pointer-events-auto">
+        <div className="absolute top-4 right-4 z-20 p-3 rounded-[14px] bg-[#000000]/95 border border-[#23272f] backdrop-blur-md shadow-2xl text-[11px] font-mono space-y-2 pointer-events-auto">
           <div className="text-[#888] font-bold text-[10px] uppercase tracking-wider">
             Risk Severity Scale
           </div>
@@ -553,9 +589,9 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
           </div>
         </div>
 
-        {/* Top-Left Coordinate & Basin Chip */}
-        <div className="absolute top-4 left-4 z-20 flex items-center gap-2 pointer-events-none">
-          <div className="px-3 py-1.5 rounded-full bg-[#0c0d10]/90 border border-[#23272f] backdrop-blur-md text-[11px] font-mono text-[#a3e635] flex items-center gap-1.5 shadow-lg">
+        {/* Top-Left Coordinate Pill Overlay */}
+        <div className="absolute top-4 left-4 z-20 flex items-center gap-2 pointer-events-auto">
+          <div className="px-3.5 py-1.5 rounded-full bg-[#000000]/90 border border-[#23272f] backdrop-blur-md text-[11px] font-mono text-[#a3e635] flex items-center gap-1.5 shadow-lg">
             <MapPin size={12} />
             <span>Jharia Coalfield • 23.7482°N, 86.4195°E</span>
           </div>
