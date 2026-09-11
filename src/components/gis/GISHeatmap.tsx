@@ -45,8 +45,8 @@ export const calculateNodeStatus = (node: SensorNode): 'critical' | 'warning' | 
 export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
   const { nodes, reports, assemblyPoints, rainfallRate } = useGeoSentinel();
 
-  // Layer Toggles: 'dark' (Pitch-Black Dark OSM), 'satellite' (Esri High-Res Satellite), 'street-dark' (Tactical Street Dark)
-  const [basemapType, setBasemapType] = useState<'dark' | 'satellite' | 'street-dark'>('dark');
+  // Layer Toggles: 'dark' (Tactical Dark Theme), 'satellite' (Esri High-Res Satellite)
+  const [basemapType, setBasemapType] = useState<'dark' | 'satellite'>('dark');
   const [showHeatmap, setShowHeatmap] = useState<boolean>(true);
   const [showNodes, setShowNodes] = useState<boolean>(true);
   const [showMineWorkings, setShowMineWorkings] = useState<boolean>(true);
@@ -61,7 +61,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
   // Center Coordinates: Jharia Coalfield Sector 4 / Open Pit
   const mapCenter = useMemo<[number, number]>(() => [23.7482, 86.4195], []);
 
-  const getTileConfig = (type: 'dark' | 'satellite' | 'street-dark') => {
+  const getTileConfig = (type: 'dark' | 'satellite') => {
     switch (type) {
       case 'satellite':
         return {
@@ -71,15 +71,6 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
           maxZoom: 19,
           maxNativeZoom: 18,
           attribution: '© Esri World Imagery'
-        };
-      case 'street-dark':
-        return {
-          url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          className: 'leaflet-tile-street-dark',
-          subdomains: ['a', 'b', 'c'],
-          maxZoom: 19,
-          maxNativeZoom: 19,
-          attribution: '© OpenStreetMap'
         };
       case 'dark':
       default:
@@ -536,7 +527,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
           </label>
         </div>
 
-        {/* Basemap Style Toggle: Zero Watermark Dark Theme / Satellite / Dark Streets */}
+        {/* Basemap Style Toggle: Zero Watermark Dark Theme / Satellite */}
         <div className="flex items-center gap-1.5 p-1 rounded-lg border border-[#232731] bg-[#121418]">
           <button
             onClick={() => setBasemapType('dark')}
@@ -553,14 +544,6 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
             }`}
           >
             Satellite
-          </button>
-          <button
-            onClick={() => setBasemapType('street-dark')}
-            className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer ${
-              basemapType === 'street-dark' ? 'bg-[#22262f] text-[#a3e635] font-bold' : 'text-[#717682] hover:text-white'
-            }`}
-          >
-            Dark Streets
           </button>
         </div>
       </div>

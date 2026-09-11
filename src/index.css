@@ -99,10 +99,6 @@
   filter: brightness(88%) contrast(110%);
 }
 
-.leaflet-tile-street-dark {
-  filter: invert(96%) hue-rotate(190deg) brightness(88%) contrast(120%) saturate(30%) !important;
-  background: #14171d !important;
-}
 
 .custom-leaflet-popup .leaflet-popup-content-wrapper {
   background: #000000 !important;
