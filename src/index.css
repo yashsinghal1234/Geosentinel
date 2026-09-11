@@ -376,3 +376,50 @@
 .animate-marquee {
   animation: marquee 30s linear infinite;
 }
+
+/* Custom Leaflet Dark Theme Popups */
+.leaflet-popup-content-wrapper {
+  background: #080a0f !important;
+  color: #ffffff !important;
+  border-radius: 14px !important;
+  padding: 0 !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  overflow: hidden !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+.leaflet-popup-tip-container {
+  overflow: hidden;
+}
+
+.leaflet-popup-tip {
+  background: #080a0f !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.8) !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  top: 10px !important;
+  right: 10px !important;
+  color: #94a3b8 !important;
+  padding: 4px !important;
+  font-size: 16px !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.2s ease !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+

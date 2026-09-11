@@ -2,6 +2,7 @@ export type AlertLevel = 1 | 2 | 3 | 4 | 5;
 export type AlertLevelName = 'Normal' | 'Monitor' | 'Advisory' | 'Warning' | 'Evacuate Now';
 
 export type SensorType = 
+  | 'multi_sensor_node'
   | 'tiltmeter' 
   | 'geophone' 
   | 'extensometer' 
@@ -9,13 +10,30 @@ export type SensorType =
   | 'rain_gauge';
 
 export interface SensorReading {
+  // BNO085 9-DOF IMU (Motion, Orientation & Geomechanics)
   tiltDeg: number;            // Surface tilt / slope inclination in degrees
+  rollDeg?: number;           // BNO085 Roll angle in degrees
+  pitchDeg?: number;          // BNO085 Pitch angle in degrees
+  yawDeg?: number;            // BNO085 Heading / Azimuth in degrees
   vibrationMmS: number;       // Peak particle velocity (PPV) in mm/s
+  accelG?: number;            // 3-axis resultant dynamic acceleration in g (9.81 m/s²)
+
+  // BME280 Environmental & Barometric Sensor
+  tempC?: number;             // Ambient temperature in °C
+  humidityPct?: number;       // Relative humidity in %
+  pressureHpa?: number;       // Barometric atmospheric pressure in hPa/mbar
+
+  // Capacitive Soil Moisture Sensor (Pore-Pressure & Liquefaction Indicator)
+  soilMoisturePct?: number;   // Volumetric soil water content in %
+
+  // Legacy / Seam Specific Extensions
   crackWidthMm: number;       // Extensometer crack aperture in mm
   gasPpm: number;             // Hazardous coal seam gas (CH4 / CO) in PPM
   rainfallMmHr: number;       // Precipitation rate in mm/hr
+
+  // ESP32-S3 Diagnostics & Network Health
   batteryPct: number;         // Solar/LiFePO4 battery level %
-  rssiDbm: number;            // LoRa / ESP-NOW signal strength in dBm
+  rssiDbm: number;            // WiFi Mesh / ESP-NOW signal strength in dBm
   lastHeartbeat: number;      // Epoch ms
 }
 
@@ -24,6 +42,10 @@ export interface TelemetryPoint {
   timeEpoch: number;
   tiltDeg: number;
   vibrationMmS: number;
+  soilMoisturePct?: number;
+  tempC?: number;
+  humidityPct?: number;
+  pressureHpa?: number;
   crackWidthMm: number;
   gasPpm: number;
   riskScore: number;
@@ -34,13 +56,16 @@ export interface SensorNode {
   name: string;
   code: string;
   type: SensorType;
+  hardwareModel?: string;     // e.g. 'ESP32-S3 (BNO085 + BME280 + Soil Moisture)'
   zone: string;
+  sector?: number;
   lat: number;
   lng: number;
   elevationMeters: number;
   depthMeters?: number;
   meshHopCount: number;
   parentNodeId: string | null; // routing tree
+  masterId?: string;          // Target Sector Master Gateway (e.g. 'MASTER-S1')
   status: 'online' | 'warning' | 'critical' | 'offline' | 'corroborating';
   readings: SensorReading;
   history: TelemetryPoint[];
@@ -49,6 +74,8 @@ export interface SensorNode {
     tiltCriticalDeg: number;
     vibrationWarningMmS: number;
     vibrationCriticalMmS: number;
+    soilMoistureWarningPct?: number;
+    soilMoistureCriticalPct?: number;
     crackWarningMm: number;
     crackCriticalMm: number;
     gasWarningPpm: number;
@@ -62,7 +89,8 @@ export interface MeshLink {
   targetId: string;
   rssiDbm: number;
   packetLossPct: number;
-  protocol: 'LoRa 868MHz' | 'ESP-NOW 2.4GHz';
+  protocol: 'WiFi Mesh' | 'ESP-NOW 2.4GHz' | 'LoRa (SX1278)' | 'LoRa 868MHz';
+  linkType?: 'mesh_leaf' | 'inter_master_lora' | 'master_uplink';
   active: boolean;
 }
 
@@ -70,6 +98,8 @@ export interface GatewayDevice {
   id: string;
   name: string;
   code: string;
+  hardwareModel?: string;     // 'Raspberry Pi 4 Model B (Sector Master)'
+  sectorNum?: number;
   lat: number;
   lng: number;
   ip: string;
@@ -79,7 +109,13 @@ export interface GatewayDevice {
   batteryPct: number;
   wifiHotspotSsid: string;
   localSirenActive: boolean;
-  gsmSignalBars: number; // 0 to 5
+  gsmSignalBars: number;       // 0 to 5
+  gsmStatus?: 'online' | 'emergency_standby' | 'broadcasting';
+  loraStatus?: 'connected' | 'syncing' | 'offline'; // LoRa SX1278
+  edgeAiStatus?: 'inferencing' | 'calibrating' | 'standby';
+  edgeAiInferenceFps?: number;
+  solarMpptWatts?: number;
+  selfHealingActive?: boolean;
   storeAndForwardBufferCount: number;
   lastSyncTime: string;
   firmwareVersion: string;

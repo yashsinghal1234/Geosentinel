@@ -100,6 +100,13 @@ export const ChevronDown: React.FC<IconProps> = ({ size, className, ...props }) 
   </svg>
 );
 
+export const ChevronUp: React.FC<IconProps> = ({ size, className, ...props }) => (
+  <svg {...defaultProps} width={size || defaultProps.width} height={size || defaultProps.height} className={className} {...props}>
+    <polyline points="18 15 12 9 6 15" />
+  </svg>
+);
+
+
 export const ChevronRight: React.FC<IconProps> = ({ size, className, ...props }) => (
   <svg {...defaultProps} width={size || defaultProps.width} height={size || defaultProps.height} className={className} {...props}>
     <polyline points="9 18 15 12 9 6" />

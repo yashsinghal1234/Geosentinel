@@ -665,12 +665,12 @@ export const OperatorDashboard: React.FC = () => {
                 <table className="w-full text-left text-xs font-mono">
                   <thead className="bg-[#121418] text-[#888] border-b border-[#181b20]">
                     <tr>
-                      <th className="p-4">NODE ID</th>
-                      <th className="p-4">ZONE / LOCATION</th>
-                      <th className="p-4">TYPE</th>
-                      <th className="p-4">TILT (DEG)</th>
-                      <th className="p-4">VIBRATION</th>
-                      <th className="p-4">CRACK (MM)</th>
+                      <th className="p-4">STATION ID</th>
+                      <th className="p-4">SECTOR &amp; ZONE</th>
+                      <th className="p-4">BNO085 TILT</th>
+                      <th className="p-4">BNO085 VIB</th>
+                      <th className="p-4">SOIL MOISTURE</th>
+                      <th className="p-4">BME280 ENVIRO</th>
                       <th className="p-4">BATTERY</th>
                       <th className="p-4 text-right">STATUS</th>
                     </tr>
@@ -678,13 +678,20 @@ export const OperatorDashboard: React.FC = () => {
                   <tbody className="divide-y divide-[#14161a]">
                     {filteredNodes.map((n) => (
                       <tr key={n.id} className="hover:bg-[#121418] transition-colors">
-                        <td className="p-4 font-bold text-white">{n.id}</td>
+                        <td className="p-4 font-bold text-white">
+                          <div>{n.name}</div>
+                          <div className="text-[10px] text-[#38bdf8] font-mono">ESP32-S3 Pod</div>
+                        </td>
                         <td className="p-4 text-[#d1d5db]">{n.zone}</td>
-                        <td className="p-4 text-[#888] uppercase">{n.type}</td>
                         <td className="p-4 text-white">{(n.readings?.tiltDeg ?? 0).toFixed(2)}°</td>
                         <td className="p-4 text-white">{(n.readings?.vibrationMmS ?? 0).toFixed(1)} mm/s</td>
-                        <td className="p-4 text-white">{(n.readings?.crackWidthMm ?? 0).toFixed(1)} mm</td>
-                        <td className="p-4 text-white">{n.readings?.batteryPct ?? 100}%</td>
+                        <td className="p-4">
+                          <span className={(n.readings?.soilMoisturePct ?? 50) > 75 ? 'text-[#ef4444] font-bold' : 'text-[#4ade80]'}>
+                            {n.readings?.soilMoisturePct ?? 50}% VWC
+                          </span>
+                        </td>
+                        <td className="p-4 text-[#cbd5e1]">{n.readings?.tempC ?? 27.5}°C • {n.readings?.humidityPct ?? 60}%</td>
+                        <td className="p-4 text-white">{n.readings?.batteryPct ?? 95}%</td>
                         <td className="p-4 text-right">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] ${
                             n.status === 'critical' ? 'bg-[#2a0e0e] text-[#ef4444]' :
