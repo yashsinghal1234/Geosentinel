@@ -606,6 +606,8 @@ interface GeoSentinelContextType {
   userRole: UserRole;
   language: SupportedLanguage;
   activeTab: 'landing' | 'operator' | 'gis' | 'topology' | 'gateway' | 'public' | 'citizen' | 'admin';
+  villageSubTab: 'status' | 'report' | 'shelters' | 'checklist' | 'docs';
+  setVillageSubTab: (tab: 'status' | 'report' | 'shelters' | 'checklist' | 'docs') => void;
   selectedNodeId: string | null;
   rainfallRate: number;
   audioMuted: boolean;
@@ -727,6 +729,7 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [activeTab, setActiveTab] = useState<'landing' | 'operator' | 'gis' | 'topology' | 'gateway' | 'public' | 'citizen' | 'admin'>(
     initialAuth.isAuthenticated ? 'operator' : 'landing'
   );
+  const [villageSubTab, setVillageSubTab] = useState<'status' | 'report' | 'shelters' | 'checklist' | 'docs'>('status');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [rainfallRate, setRainfallRate] = useState<number>(4.2);
   const [audioMuted, setAudioMuted] = useState<boolean>(false);
@@ -1182,6 +1185,8 @@ export const GeoSentinelProvider: React.FC<{ children: ReactNode }> = ({ childre
         userRole,
         language,
         activeTab,
+        villageSubTab,
+        setVillageSubTab,
         selectedNodeId,
         rainfallRate,
         audioMuted,

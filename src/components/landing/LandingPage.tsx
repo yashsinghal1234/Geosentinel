@@ -12,7 +12,7 @@ import {
 
 
 export const LandingPage: React.FC = () => {
-  const { setIsLoginModalOpen, setActiveTab } = useGeoSentinel();
+  const { setIsLoginModalOpen, setActiveTab, setVillageSubTab } = useGeoSentinel();
 
   return (
     <div className="min-h-screen bg-[#000000] text-white selection:bg-[#a3e635]/30 selection:text-white pb-24">
@@ -42,7 +42,10 @@ export const LandingPage: React.FC = () => {
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-3.5 pt-6">
           <button
-            onClick={() => setActiveTab('public')}
+            onClick={() => {
+              setActiveTab('public');
+              setVillageSubTab('status');
+            }}
             className="flex items-center gap-2 rounded-full bg-white px-6 py-3 text-[14px] font-semibold text-black hover:bg-white/90 transition-all cursor-pointer shadow-md hover:scale-[1.02] active:scale-[0.98]"
           >
             <span>Village Safety Board</span>
@@ -50,7 +53,10 @@ export const LandingPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('citizen')}
+            onClick={() => {
+              setActiveTab('public');
+              setVillageSubTab('report');
+            }}
             className="flex items-center gap-2 rounded-full border border-[#262626] bg-[#0c0d0e] px-5 py-3 text-[14px] font-medium text-white hover:border-[#444444] transition-colors cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
           >
             <Camera size={15} className="text-[#a3e635]" />

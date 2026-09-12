@@ -13,8 +13,7 @@ import {
   Upload,
   Activity,
   AlertTriangle,
-  Sparkles,
-  ChevronDown
+  Sparkles
 } from '../icons';
 
 // Built-in Geological Fracture Reference Patterns (Instant 1-Click for villagers without camera)
@@ -53,12 +52,10 @@ export const PublicSafetyView: React.FC = () => {
     submitCrackReport,
     language, 
     setLanguage, 
-    submitCheckIn
+    submitCheckIn,
+    villageSubTab,
+    setVillageSubTab
   } = useGeoSentinel();
-
-  // Internal Navigation within Village Dashboard
-  const [villageTab, setVillageTab] = useState<'status' | 'report' | 'shelters' | 'checklist' | 'docs'>('status');
-  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
   // Check-In State
   const [residentName, setResidentName] = useState('');
@@ -94,17 +91,6 @@ export const PublicSafetyView: React.FC = () => {
     if (crackWidth >= 6) return { label: 'Moderate Shear Fissure (6-15mm)', color: 'text-[#f59e0b] bg-[#f59e0b]/15 border-[#f59e0b]/40', icon: Activity };
     return { label: 'Minor Surface Tension (1-5mm)', color: 'text-[#38bdf8] bg-[#38bdf8]/15 border-[#38bdf8]/40', icon: Activity };
   }, [crackWidth]);
-
-  // Tab definitions for the dropdown
-  const tabOptions = [
-    { id: 'status', label: 'Live Emergency Status', icon: Activity, tag: 'Level ' + risk.level, color: 'text-[#a3e635]' },
-    { id: 'report', label: 'Report Ground Fissure', icon: Camera, tag: reports.length + ' Logs', color: 'text-[#38bdf8]' },
-    { id: 'shelters', label: 'Assembly Shelters & Safe Zones', icon: ShieldCheck, tag: assemblyPoints.length + ' Shelters', color: 'text-[#22c55e]' },
-    { id: 'checklist', label: 'Action Checklist & Hotlines', icon: ShieldAlert, tag: 'SOP Guide', color: 'text-[#f59e0b]' },
-    { id: 'docs', label: 'Village Safety Documentation', icon: Sparkles, tag: 'Disaster Manual', color: 'text-[#a78bfa]' }
-  ] as const;
-
-  const activeTabObj = tabOptions.find(t => t.id === villageTab) || tabOptions[0];
 
   // Handle GPS Auto-detection
   const handleAutoDetectGPS = () => {
@@ -245,78 +231,8 @@ export const PublicSafetyView: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. VILLAGE DASHBOARD DROPDOWN & QUICK NAV SELECTOR                         */}
+      {/* 2. RESIDENT CHECK-IN CONFIRMATION BANNER                                  */}
       {/* ========================================================================= */}
-      <div className="relative">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border border-[#1e232d] bg-[#080a0d] shadow-sm">
-          {/* Main Dropdown Trigger */}
-          <div className="relative w-full sm:w-80">
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-[#262c38] bg-[#0c0e14] hover:border-[#38bdf8]/50 text-white transition-all cursor-pointer shadow-sm text-left group"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <activeTabObj.icon size={16} className={activeTabObj.color} />
-                <span className="text-sm font-bold text-white truncate">{activeTabObj.label}</span>
-              </div>
-              <ChevronDown size={15} className={`text-[#828894] group-hover:text-white transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {/* Dropdown Menu Modal */}
-            {isDropdownOpen && (
-              <div className="absolute left-0 top-full mt-2 w-full sm:w-96 rounded-2xl border border-[#262c38] bg-[#0c0e14] p-2 shadow-2xl z-30 space-y-1 animate-in fade-in duration-150 backdrop-blur-xl">
-                {tabOptions.map((opt) => {
-                  const IconComp = opt.icon;
-                  const isSelected = villageTab === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => {
-                        setVillageTab(opt.id as any);
-                        setIsDropdownOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between p-3 rounded-xl text-left transition-all cursor-pointer ${
-                        isSelected 
-                          ? 'bg-[#181d26] border border-[#3b4354] text-white shadow-sm' 
-                          : 'hover:bg-[#121620] text-[#828894] hover:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg bg-black/60 border border-white/5 ${opt.color}`}>
-                          <IconComp size={15} />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-white leading-tight">{opt.label}</div>
-                          <span className="text-[10px] text-[#717682]">{opt.tag}</span>
-                        </div>
-                      </div>
-                      {isSelected && <span className="text-[#a3e635] text-xs font-bold font-mono">ACTIVE</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Quick Tab Pills (Desktop) */}
-          <div className="hidden sm:flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-            {tabOptions.map((opt) => (
-              <button
-                key={opt.id}
-                onClick={() => setVillageTab(opt.id as any)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                  villageTab === opt.id
-                    ? 'bg-[#181d26] text-white border border-[#3b4354] shadow-sm font-bold'
-                    : 'text-[#828894] hover:text-white hover:bg-[#121620]'
-                }`}
-              >
-                {opt.label.split(' ')[0]} {opt.label.split(' ')[1] || ''}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {hasCheckedIn && (
         <div className="rounded-2xl border border-[#3fcb7f]/40 bg-[#3fcb7f]/10 p-4.5 text-xs text-white flex items-center justify-between animate-fadeIn">
           <div className="flex items-center gap-2.5">
@@ -332,7 +248,7 @@ export const PublicSafetyView: React.FC = () => {
       {/* ========================================================================= */}
       {/* TAB 1: LIVE EMERGENCY STATUS HERO & 1-TAP SOS                             */}
       {/* ========================================================================= */}
-      {villageTab === 'status' && (
+      {villageSubTab === 'status' && (
         <div className="space-y-6">
           {/* Main Status Hero Card (High Contrast, Bold, Color-coded) */}
           <div className={`rounded-2xl border p-6 sm:p-10 text-center space-y-4 shadow-xl ${
@@ -403,7 +319,7 @@ export const PublicSafetyView: React.FC = () => {
               </div>
             </div>
             <button
-              onClick={() => setVillageTab('report')}
+              onClick={() => setVillageSubTab('report')}
               className="px-5 py-2.5 rounded-xl bg-[#38bdf8] hover:bg-[#0284c7] text-black font-bold text-xs transition-colors cursor-pointer shrink-0 shadow-sm"
             >
               Report Fissure Directly →
@@ -415,7 +331,7 @@ export const PublicSafetyView: React.FC = () => {
       {/* ========================================================================= */}
       {/* TAB 2: IN-PAGE CITIZEN CRACK REPORTING FORM & COMMUNITY LOGS              */}
       {/* ========================================================================= */}
-      {villageTab === 'report' && (
+      {villageSubTab === 'report' && (
         <div className="space-y-6">
           {reportSuccessMessage && (
             <div className="p-4 rounded-2xl border border-[#22c55e]/40 bg-[#22c55e]/10 text-[#22c55e] text-xs font-semibold flex items-center gap-2.5 animate-fadeIn">
@@ -639,7 +555,7 @@ export const PublicSafetyView: React.FC = () => {
       {/* ========================================================================= */}
       {/* TAB 3: ASSEMBLY SHELTERS & ROSTER                                         */}
       {/* ========================================================================= */}
-      {villageTab === 'shelters' && (
+      {villageSubTab === 'shelters' && (
         <div className="space-y-5">
           <div className="p-6 rounded-2xl border border-[#1e232d] bg-[#080a0d] space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-[#161920] pb-3.5">
@@ -705,7 +621,7 @@ export const PublicSafetyView: React.FC = () => {
       {/* ========================================================================= */}
       {/* TAB 4: ACTION CHECKLIST & EMERGENCY HOTLINES                              */}
       {/* ========================================================================= */}
-      {villageTab === 'checklist' && (
+      {villageSubTab === 'checklist' && (
         <div className="space-y-5">
           <div className="p-6 rounded-2xl border border-[#1e232d] bg-[#080a0d] space-y-4 shadow-sm">
             <div className="flex items-center gap-2.5 border-b border-[#161920] pb-3.5">
@@ -751,7 +667,7 @@ export const PublicSafetyView: React.FC = () => {
       {/* ========================================================================= */}
       {/* TAB 5: VILLAGE SAFETY DOCUMENTATION & EARLY WARNING GUIDELINES            */}
       {/* ========================================================================= */}
-      {villageTab === 'docs' && (
+      {villageSubTab === 'docs' && (
         <div className="space-y-6">
           <div className="p-6 rounded-2xl border border-[#1e232d] bg-[#080a0d] space-y-6 shadow-sm">
             <div className="border-b border-[#161920] pb-4">

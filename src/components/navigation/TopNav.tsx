@@ -1,17 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGeoSentinel } from '../../context/GeoSentinelContext';
 import { 
   Bell, 
   Moon, 
   Github, 
   LogOut,
-  Lock
+  Lock,
+  ChevronDown,
+  Activity,
+  Camera,
+  ShieldCheck,
+  ShieldAlert,
+  Sparkles
 } from '../icons';
 
 export const TopNav: React.FC = () => {
   const {
     activeTab,
     setActiveTab,
+    villageSubTab,
+    setVillageSubTab,
     risk,
     audioMuted,
     toggleAudioMuted,
@@ -20,6 +28,8 @@ export const TopNav: React.FC = () => {
     setIsLoginModalOpen,
     logout,
   } = useGeoSentinel();
+
+  const [isVillageDropdownOpen, setIsVillageDropdownOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#181818] bg-[#000000]/95 backdrop-blur-md">
@@ -45,26 +55,149 @@ export const TopNav: React.FC = () => {
         </div>
 
         {/* ========================================================================= */}
-        {/* 2. CENTER: Navigation Pills                                               */}
+        {/* 2. CENTER: Navigation Pills & Village Board Dropdown                      */}
         {/* ========================================================================= */}
         <nav className="hidden lg:flex items-center rounded-full border border-[#262626] bg-[#0c0d0e]/95 px-5 sm:px-6 py-2 sm:py-2.5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] text-[14px] sm:text-[15px] font-medium tracking-tight text-[#a1a1aa] gap-5 sm:gap-6">
-          {/* 1. Public Village Safety Board */}
-          <button
-            onClick={() => setActiveTab('public')}
-            className={`px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-2 ${
-              activeTab === 'public' 
-                ? 'text-white font-bold bg-white/10' 
-                : 'hover:text-white'
-            }`}
-          >
-            <span className="h-2 w-2 rounded-full bg-[#a3e635] animate-ping" />
-            <span>Village Safety Board</span>
-          </button>
+          
+          {/* 1. Public Village Safety Board Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                if (activeTab !== 'public') {
+                  setActiveTab('public');
+                }
+                setIsVillageDropdownOpen(!isVillageDropdownOpen);
+              }}
+              onMouseEnter={() => setIsVillageDropdownOpen(true)}
+              className={`px-3.5 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-2 ${
+                activeTab === 'public' 
+                  ? 'text-white font-bold bg-white/10 shadow-sm' 
+                  : 'hover:text-white'
+              }`}
+            >
+              <span className="h-2 w-2 rounded-full bg-[#a3e635] animate-ping" />
+              <span>Village Board</span>
+              <ChevronDown size={13} className={`text-[#808080] transition-transform duration-200 ${isVillageDropdownOpen ? 'rotate-180 text-white' : ''}`} />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isVillageDropdownOpen && (
+              <div 
+                onMouseLeave={() => setIsVillageDropdownOpen(false)}
+                className="absolute left-0 top-full mt-2 w-72 rounded-2xl border border-[#262c38] bg-[#0c0e14]/95 p-2 shadow-2xl z-50 space-y-1 backdrop-blur-xl animate-in fade-in duration-150"
+              >
+                <button
+                  onClick={() => {
+                    setActiveTab('public');
+                    setVillageSubTab('status');
+                    setIsVillageDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-colors cursor-pointer ${
+                    activeTab === 'public' && villageSubTab === 'status' 
+                      ? 'bg-[#181d26] text-white border border-[#3b4354]' 
+                      : 'text-[#828894] hover:text-white hover:bg-[#121620]'
+                  }`}
+                >
+                  <div className="p-1.5 rounded-lg bg-[#a3e635]/10 text-[#a3e635]">
+                    <Activity size={14} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">Live Emergency Status</div>
+                    <span className="text-[10px] text-[#717682]">Evacuation stage &amp; sirens</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('public');
+                    setVillageSubTab('report');
+                    setIsVillageDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-colors cursor-pointer ${
+                    activeTab === 'public' && villageSubTab === 'report' 
+                      ? 'bg-[#181d26] text-white border border-[#3b4354]' 
+                      : 'text-[#828894] hover:text-white hover:bg-[#121620]'
+                  }`}
+                >
+                  <div className="p-1.5 rounded-lg bg-[#38bdf8]/10 text-[#38bdf8]">
+                    <Camera size={14} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">Report Ground Fissure</div>
+                    <span className="text-[10px] text-[#717682]">Upload photo &amp; crack width</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('public');
+                    setVillageSubTab('shelters');
+                    setIsVillageDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-colors cursor-pointer ${
+                    activeTab === 'public' && villageSubTab === 'shelters' 
+                      ? 'bg-[#181d26] text-white border border-[#3b4354]' 
+                      : 'text-[#828894] hover:text-white hover:bg-[#121620]'
+                  }`}
+                >
+                  <div className="p-1.5 rounded-lg bg-[#22c55e]/10 text-[#22c55e]">
+                    <ShieldCheck size={14} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">Assembly Shelters</div>
+                    <span className="text-[10px] text-[#717682]">Roster &amp; safe high ground</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('public');
+                    setVillageSubTab('checklist');
+                    setIsVillageDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-colors cursor-pointer ${
+                    activeTab === 'public' && villageSubTab === 'checklist' 
+                      ? 'bg-[#181d26] text-white border border-[#3b4354]' 
+                      : 'text-[#828894] hover:text-white hover:bg-[#121620]'
+                  }`}
+                >
+                  <div className="p-1.5 rounded-lg bg-[#f59e0b]/10 text-[#f59e0b]">
+                    <ShieldAlert size={14} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">Safety Checklist &amp; Hotlines</div>
+                    <span className="text-[10px] text-[#717682]">112, DGMS &amp; Panchayat</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('public');
+                    setVillageSubTab('docs');
+                    setIsVillageDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-colors cursor-pointer ${
+                    activeTab === 'public' && villageSubTab === 'docs' 
+                      ? 'bg-[#181d26] text-white border border-[#3b4354]' 
+                      : 'text-[#828894] hover:text-white hover:bg-[#121620]'
+                  }`}
+                >
+                  <div className="p-1.5 rounded-lg bg-[#a78bfa]/10 text-[#a78bfa]">
+                    <Sparkles size={14} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">Village Safety Guide</div>
+                    <span className="text-[10px] text-[#717682]">Disaster manuals &amp; Wi-Fi</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* 2. Documentation */}
           <button
             onClick={() => setActiveTab('citizen')}
-            className={`px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'citizen' 
                 ? 'text-white font-bold bg-white/10' 
                 : 'hover:text-white'
@@ -82,7 +215,7 @@ export const TopNav: React.FC = () => {
                 setIsLoginModalOpen(true);
               }
             }}
-            className={`px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'operator' || activeTab === 'gis' 
                 ? 'text-white font-bold bg-white/10' 
                 : 'hover:text-white'
@@ -101,7 +234,7 @@ export const TopNav: React.FC = () => {
                 setIsLoginModalOpen(true);
               }
             }}
-            className={`px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'topology' 
                 ? 'text-white font-bold bg-white/10' 
                 : 'hover:text-white'
@@ -183,12 +316,26 @@ export const TopNav: React.FC = () => {
       {/* Mobile Sub-Pill Navigation Bar */}
       <div className="flex lg:hidden overflow-x-auto border-t border-[#181818] bg-black px-3 py-2 gap-2 scrollbar-none items-center">
         <button
-          onClick={() => setActiveTab('public')}
+          onClick={() => {
+            setActiveTab('public');
+            setVillageSubTab('status');
+          }}
           className={`whitespace-nowrap px-3 py-1 rounded-full text-[12px] font-medium cursor-pointer shrink-0 ${
-            activeTab === 'public' ? 'bg-white/15 text-white font-bold' : 'text-[#808080]'
+            activeTab === 'public' && villageSubTab === 'status' ? 'bg-white/15 text-white font-bold' : 'text-[#808080]'
           }`}
         >
           Village Safety
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('public');
+            setVillageSubTab('report');
+          }}
+          className={`whitespace-nowrap px-3 py-1 rounded-full text-[12px] font-medium cursor-pointer shrink-0 ${
+            activeTab === 'public' && villageSubTab === 'report' ? 'bg-white/15 text-white font-bold' : 'text-[#808080]'
+          }`}
+        >
+          Report Cracks
         </button>
         <button
           onClick={() => setActiveTab('citizen')}
