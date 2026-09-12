@@ -96,7 +96,7 @@ export const AdminSettingsView: React.FC = () => {
             </span>
             <span className="text-xs font-mono text-white/40">ROLE: SYSTEM ADMIN (L4)</span>
           </div>
-          <h1 className="font-serif text-2xl md:text-3xl text-white tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
             Security Layer &amp; Threshold Governance
           </h1>
         </div>

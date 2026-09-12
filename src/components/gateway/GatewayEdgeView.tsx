@@ -5,7 +5,8 @@ import {
   Radio, 
   HardDrive, 
   Battery, 
-  Zap 
+  Zap,
+  ShieldCheck
 } from '../icons';
 
 export const GatewayEdgeView: React.FC = () => {
@@ -29,89 +30,104 @@ export const GatewayEdgeView: React.FC = () => {
     }, 1200);
   };
 
+  const getStatusColor = (level: number) => {
+    if (level >= 4) return 'text-[#ef4444]';
+    if (level === 3) return 'text-[#f59e0b]';
+    if (level === 2) return 'text-[#38bdf8]';
+    return 'text-[#22c55e]';
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn pb-16">
       {/* Main Gateway Status Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Store & Forward Buffer */}
-        <div className="p-4 rounded-xl border border-white/10 bg-[#050607] flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-mono uppercase tracking-wider text-white/50">Store-and-Forward Queue</span>
-            <HardDrive size={14} className={gateway.storeAndForwardBufferCount > 0 ? 'text-[#eab308]' : 'text-[#22c55e]'} />
+        <div className="p-4.5 rounded-2xl border border-[#1e232d] bg-[#080a0d] flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#828894]">Store-and-Forward Queue</span>
+            <div className={`p-1.5 rounded-lg ${gateway.storeAndForwardBufferCount > 0 ? 'bg-[#eab308]/10 text-[#eab308]' : 'bg-[#22c55e]/10 text-[#22c55e]'}`}>
+              <HardDrive size={14} />
+            </div>
           </div>
           <div>
-            <div className="text-3xl font-mono font-bold text-white tracking-tight">
-              {gateway.storeAndForwardBufferCount} <span className="text-sm font-normal text-white/50">Packets</span>
+            <div className="text-3xl font-bold font-mono text-white tracking-tight">
+              {gateway.storeAndForwardBufferCount} <span className="text-sm font-normal text-[#717682]">Packets</span>
             </div>
-            <p className="text-xs text-white/50 font-mono mt-1">
+            <p className="text-xs text-[#828894] mt-1 font-normal">
               {gateway.storeAndForwardBufferCount === 0 
-                ? 'Buffer fully synced with Cloud' 
-                : 'Buffering sensor telemetry in flash memory'}
+                ? 'Buffer fully synchronized with Cloud database' 
+                : 'Buffering telemetry in NVRAM flash memory'}
             </p>
           </div>
-          <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between text-xs font-mono">
-            <span className="text-white/50">Last Cloud Sync</span>
-            <span className="text-white/80">{gateway.lastSyncTime}</span>
+          <div className="mt-3.5 pt-2.5 border-t border-[#161920] flex items-center justify-between text-xs font-mono">
+            <span className="text-[#717682]">Last Cloud Sync</span>
+            <span className="text-[#cbd5e1]">{gateway.lastSyncTime}</span>
           </div>
         </div>
 
         {/* Local Edge AI Inference */}
-        <div className="p-4 rounded-xl border border-white/10 bg-[#050607] flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-mono uppercase tracking-wider text-white/50">Local Edge AI Inference</span>
-            <Zap size={14} className="text-[#818cf8]" />
+        <div className="p-4.5 rounded-2xl border border-[#1e232d] bg-[#080a0d] flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#828894]">Local Edge AI Inference</span>
+            <div className="p-1.5 rounded-lg bg-[#818cf8]/10 text-[#818cf8]">
+              <Zap size={14} />
+            </div>
           </div>
           <div>
-            <div className="text-3xl font-mono font-bold text-white tracking-tight">
-              0.00 <span className="text-sm font-normal text-white/50">ms latency</span>
+            <div className="text-3xl font-bold font-mono text-white tracking-tight">
+              0.00 <span className="text-sm font-normal text-[#717682]">ms latency</span>
             </div>
-            <p className="text-xs text-white/50 font-mono mt-1">
-              On-board ESP32-S3 / Linux Edge AI engine
+            <p className="text-xs text-[#828894] mt-1 font-normal">
+              On-board ESP32-S3 / Linux embedded runtime
             </p>
           </div>
-          <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between text-xs font-mono">
-            <span className="text-white/50">Calculated Risk Score</span>
-            <span className="text-[#818cf8] font-bold">{risk.score} / 100</span>
+          <div className="mt-3.5 pt-2.5 border-t border-[#161920] flex items-center justify-between text-xs">
+            <span className="text-[#717682]">Calculated Risk Score</span>
+            <span className="text-[#818cf8] font-bold font-mono">{risk.score} / 100</span>
           </div>
         </div>
 
-        {/* GSM / 2G Basic Modem */}
-        <div className="p-4 rounded-xl border border-white/10 bg-[#050607] flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-mono uppercase tracking-wider text-white/50">SIM800L 2G/GSM Direct SMS</span>
-            <Radio size={14} className="text-[#22c55e]" />
+        {/* GSM / 2G Modem */}
+        <div className="p-4.5 rounded-2xl border border-[#1e232d] bg-[#080a0d] flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#828894]">SIM800L 2G/GSM Direct SMS</span>
+            <div className="p-1.5 rounded-lg bg-[#22c55e]/10 text-[#22c55e]">
+              <Radio size={14} />
+            </div>
           </div>
           <div>
-            <div className="text-3xl font-mono font-bold text-white tracking-tight">
-              {gateway.gsmSignalBars} / 5 <span className="text-sm font-normal text-white/50">Bars</span>
+            <div className="text-3xl font-bold font-mono text-white tracking-tight">
+              {gateway.gsmSignalBars} / 5 <span className="text-sm font-normal text-[#717682]">Bars</span>
             </div>
-            <p className="text-xs text-white/50 font-mono mt-1">
-              Autonomous SIM SMS (No internet needed)
+            <p className="text-xs text-[#828894] mt-1 font-normal">
+              Autonomous SIM dispatch (Zero internet needed)
             </p>
           </div>
-          <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between text-xs font-mono">
-            <span className="text-white/50">Modem Status</span>
-            <span className="text-[#22c55e]">Registered to BSNL Cell</span>
+          <div className="mt-3.5 pt-2.5 border-t border-[#161920] flex items-center justify-between text-xs font-mono">
+            <span className="text-[#717682]">Modem Status</span>
+            <span className="text-[#22c55e] font-medium">Registered (BSNL Cell)</span>
           </div>
         </div>
 
         {/* Solar & Thermal Health */}
-        <div className="p-4 rounded-xl border border-white/10 bg-[#050607] flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-mono uppercase tracking-wider text-white/50">Solar UPS &amp; Edge CPU</span>
-            <Battery size={14} className="text-[#22c55e]" />
+        <div className="p-4.5 rounded-2xl border border-[#1e232d] bg-[#080a0d] flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#828894]">Solar UPS &amp; Edge CPU</span>
+            <div className="p-1.5 rounded-lg bg-[#22c55e]/10 text-[#22c55e]">
+              <Battery size={14} />
+            </div>
           </div>
           <div>
-            <div className="text-3xl font-mono font-bold text-white tracking-tight">
-              {gateway.batteryPct}% <span className="text-sm font-normal text-white/50">LiFePO4</span>
+            <div className="text-3xl font-bold font-mono text-white tracking-tight">
+              {gateway.batteryPct}% <span className="text-sm font-normal text-[#717682]">LiFePO4</span>
             </div>
-            <p className="text-xs text-white/50 font-mono mt-1">
-              CPU: {gateway.cpuTempC}°C | RAM: {gateway.ramUsagePct}%
+            <p className="text-xs text-[#828894] mt-1 font-mono">
+              CPU: {gateway.cpuTempC}°C • RAM: {gateway.ramUsagePct}%
             </p>
           </div>
-          <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between text-xs font-mono">
-            <span className="text-white/50">Solar Charging</span>
-            <span className="text-[#22c55e] font-semibold">+4.8W 18V PV Panel</span>
+          <div className="mt-3.5 pt-2.5 border-t border-[#161920] flex items-center justify-between text-xs font-mono">
+            <span className="text-[#717682]">Solar Ingress</span>
+            <span className="text-[#22c55e] font-medium">+4.8W 18V PV</span>
           </div>
         </div>
       </div>
@@ -119,89 +135,104 @@ export const GatewayEdgeView: React.FC = () => {
       {/* Simulated Captive Portal & Offline Dashboard Preview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Edge Local Mini-Dashboard */}
-        <div className="lg:col-span-7 p-5 rounded-xl border border-white/10 bg-[#050607]">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+        <div className="lg:col-span-7 p-6 rounded-2xl border border-[#1e232d] bg-[#080a0d] shadow-sm">
+          <div className="flex items-center justify-between mb-5 pb-3.5 border-b border-[#161920]">
             <div>
               <div className="flex items-center gap-2">
-                <Server size={16} className="text-[#818cf8]" />
-                <h2 className="text-sm font-mono uppercase tracking-wider text-white">
+                <Server size={17} className="text-[#818cf8]" />
+                <h2 className="text-sm font-bold text-white tracking-tight">
                   Local Mini-Dashboard (192.168.4.1 Captive Portal)
                 </h2>
               </div>
-              <p className="text-xs font-mono text-white/40 mt-0.5">
+              <p className="text-xs text-[#828894] mt-0.5">
                 Served directly by the Gateway over Wi-Fi when village cell towers go dark
               </p>
             </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-white/10 text-white/80">
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/30">
               HTTP/1.1 200 OK
             </span>
           </div>
 
-          <div className="p-4 rounded-lg bg-black/60 border border-white/10 space-y-4">
+          <div className="p-5 rounded-xl bg-[#040507] border border-[#191d24] space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-xs font-mono text-white/40 block">CURRENT EMERGENCY STATUS</span>
-                <div className="text-xl font-serif font-bold text-white">{risk.levelName} (Stage {risk.level}/5)</div>
+                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#717682] block">
+                  Current Emergency Status
+                </span>
+                <div className={`text-2xl font-bold tracking-tight mt-0.5 ${getStatusColor(risk.level)}`}>
+                  {risk.levelName} <span className="text-xs font-mono text-[#717682] font-normal">(Stage {risk.level}/5)</span>
+                </div>
               </div>
               <div className="text-right">
-                <span className="text-xs font-mono text-white/40 block">LOCAL RELAY SIREN</span>
-                <span className={`text-xs font-mono font-bold ${gateway.localSirenActive ? 'text-[#ef4444] animate-pulse' : 'text-white/60'}`}>
-                  {gateway.localSirenActive ? 'SIREN ACTIVE (HIGH DECIBEL)' : 'STANDBY IDLE'}
+                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#717682] block">
+                  Local Relay Siren
+                </span>
+                <span className={`inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
+                  gateway.localSirenActive 
+                    ? 'bg-[#ef4444]/15 text-[#ef4444] border border-[#ef4444]/40 animate-pulse' 
+                    : 'bg-[#181d26] text-[#828894] border border-[#232936]'
+                }`}>
+                  {gateway.localSirenActive ? 'SIREN ACTIVE (110 dB)' : 'STANDBY IDLE'}
                 </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/5 text-xs font-mono">
-              <div className="p-2 rounded bg-white/5">
-                <span className="text-white/40 block text-[10px]">Mesh Sensors</span>
-                <span className="text-white font-semibold">{nodes.length} Nodes</span>
+            <div className="grid grid-cols-3 gap-3 pt-3 border-t border-[#161920]">
+              <div className="p-3 rounded-lg bg-[#0a0c10] border border-[#161920]">
+                <span className="text-[#717682] block text-[10px] uppercase font-semibold">Mesh Sensors</span>
+                <span className="text-white font-bold font-mono text-sm mt-0.5 block">{nodes.length} Nodes</span>
               </div>
-              <div className="p-2 rounded bg-white/5">
-                <span className="text-white/40 block text-[10px]">Peak Deflection</span>
-                <span className="text-[#818cf8] font-semibold">{risk.cimfrSubsidenceDepthMm} mm</span>
+              <div className="p-3 rounded-lg bg-[#0a0c10] border border-[#161920]">
+                <span className="text-[#717682] block text-[10px] uppercase font-semibold">Peak Deflection</span>
+                <span className="text-[#818cf8] font-bold font-mono text-sm mt-0.5 block">{risk.cimfrSubsidenceDepthMm} mm</span>
               </div>
-              <div className="p-2 rounded bg-white/5">
-                <span className="text-white/40 block text-[10px]">Countdown</span>
-                <span className="text-[#ef4444] font-semibold">{risk.timeToCriticalHours || 'STABLE'} hrs</span>
+              <div className="p-3 rounded-lg bg-[#0a0c10] border border-[#161920]">
+                <span className="text-[#717682] block text-[10px] uppercase font-semibold">Time To Critical</span>
+                <span className="text-[#ef4444] font-bold font-mono text-sm mt-0.5 block">{risk.timeToCriticalHours || 'STABLE'} hrs</span>
               </div>
             </div>
 
-            <div className="p-3 rounded bg-white/5 border border-white/5 text-xs font-mono text-white/70 leading-relaxed">
-              <strong>Local Edge Rule:</strong> All risk scoring, siren triggers, and emergency SMS dispatches execute on-device in under 5 milliseconds with ZERO dependence on external cloud servers, cellular data, or internet connectivity.
+            <div className="p-3.5 rounded-xl bg-[#090b10] border border-[#1a1f29] flex items-start gap-3">
+              <ShieldCheck size={18} className="text-[#a3e635] shrink-0 mt-0.5" />
+              <div className="text-xs text-[#cbd5e1] leading-relaxed">
+                <strong className="text-white font-semibold">Local Edge Guarantee:</strong> All risk scoring, siren triggers, and emergency SMS dispatches execute on-device in under 5 milliseconds with zero dependence on external cloud servers, cellular data, or internet connectivity.
+              </div>
             </div>
           </div>
         </div>
 
         {/* Right: Cloud Sync & Direct SMS Simulator */}
-        <div className="lg:col-span-5 p-5 rounded-xl border border-white/10 bg-[#050607] flex flex-col justify-between">
+        <div className="lg:col-span-5 p-6 rounded-2xl border border-[#1e232d] bg-[#080a0d] flex flex-col justify-between shadow-sm">
           <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
-              <span className="text-xs font-mono uppercase tracking-wider text-white/70">
+            <div className="flex items-center justify-between mb-5 pb-3.5 border-b border-[#161920]">
+              <span className="text-xs font-bold uppercase tracking-wider text-white">
                 Gateway Sync &amp; SMS Dispatch Test
               </span>
-              <span className="text-xs font-mono text-white/40">HARDWARE I/O</span>
+              <span className="text-[10px] font-mono text-[#717682] bg-[#14171e] px-2 py-0.5 rounded border border-[#222733]">
+                HARDWARE I/O
+              </span>
             </div>
 
             {/* Protocol Selector */}
-            <div className="space-y-3 mb-4">
-              <label className="text-xs font-mono text-white/60 block">Cloud Ingestion Protocol:</label>
-              <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+            <div className="space-y-2.5 mb-5">
+              <label className="text-xs font-medium text-[#828894] block">Cloud Ingestion Protocol</label>
+              <div className="grid grid-cols-2 gap-2 text-xs">
                 <button
                   onClick={() => setSyncProtocol('HTTP POST (JSON)')}
-                  className={`p-2.5 rounded-lg border text-center transition-colors ${
+                  className={`py-2.5 px-3 rounded-xl border text-center transition-all cursor-pointer font-medium ${
                     syncProtocol === 'HTTP POST (JSON)'
-                      ? 'border-[#818cf8] bg-[#818cf8]/10 text-white font-semibold'
-                      : 'border-white/5 bg-white/[0.02] text-white/50 hover:text-white'
+                      ? 'border-[#818cf8] bg-[#818cf8]/15 text-white font-semibold shadow-sm'
+                      : 'border-[#222733] bg-[#0d1016] text-[#828894] hover:text-white hover:bg-[#131720]'
                   }`}
                 >
                   HTTP POST (JSON)
                 </button>
                 <button
                   onClick={() => setSyncProtocol('MQTT v5.0')}
-                  className={`p-2.5 rounded-lg border text-center transition-colors ${
+                  className={`py-2.5 px-3 rounded-xl border text-center transition-all cursor-pointer font-medium ${
                     syncProtocol === 'MQTT v5.0'
-                      ? 'border-[#818cf8] bg-[#818cf8]/10 text-white font-semibold'
-                      : 'border-white/5 bg-white/[0.02] text-white/50 hover:text-white'
+                      ? 'border-[#818cf8] bg-[#818cf8]/15 text-white font-semibold shadow-sm'
+                      : 'border-[#222733] bg-[#0d1016] text-[#828894] hover:text-white hover:bg-[#131720]'
                   }`}
                 >
                   MQTT v5.0 (QoS 1)
@@ -211,41 +242,41 @@ export const GatewayEdgeView: React.FC = () => {
 
             {/* Flush Buffer Button */}
             {gateway.storeAndForwardBufferCount > 0 && (
-              <div className="p-3 rounded-lg border border-[#eab308]/30 bg-[#eab308]/5 mb-4">
+              <div className="p-3.5 rounded-xl border border-[#eab308]/30 bg-[#eab308]/5 mb-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-mono text-[#eab308] font-bold">
+                  <span className="text-xs font-semibold text-[#eab308]">
                     {gateway.storeAndForwardBufferCount} Backlog Packets Pending
                   </span>
                 </div>
                 <button
                   onClick={flushGatewayBuffer}
-                  className="w-full py-2 rounded-lg text-xs font-mono font-semibold bg-[#eab308] text-black hover:bg-[#ca8a04] transition-colors"
+                  className="w-full py-2.5 rounded-xl text-xs font-bold bg-[#eab308] text-black hover:bg-[#ca8a04] transition-colors cursor-pointer"
                 >
-                  FLUSH &amp; AUTO-SYNC BACKLOG TO CLOUD
+                  Flush &amp; Sync Backlog to Cloud
                 </button>
               </div>
             )}
 
             {/* GSM SMS Test Trigger */}
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <button
                 onClick={handleTestBasicSimSms}
                 disabled={isSimulatingSms}
-                className="w-full py-2.5 rounded-full text-xs font-mono font-semibold border border-white/20 bg-white/5 hover:bg-white/10 text-white transition-colors"
+                className="w-full py-3 rounded-xl text-xs font-bold uppercase tracking-wider border border-[#2d3444] bg-[#12161f] hover:bg-[#1b202c] hover:border-[#818cf8]/50 text-white transition-all cursor-pointer shadow-sm disabled:opacity-50"
               >
-                {isSimulatingSms ? 'SENDING AT COMMAND VIA SERIAL...' : 'TEST DIRECT 2G SIM SMS DISPATCH'}
+                {isSimulatingSms ? 'Sending AT Command via Serial...' : 'Test Direct 2G SIM SMS Dispatch'}
               </button>
 
               {simulatedSmsOutput && (
-                <div className="p-3 rounded-lg bg-black border border-[#22c55e]/30 text-[11px] font-mono text-[#22c55e] break-all">
+                <div className="p-3 rounded-xl bg-[#040507] border border-[#22c55e]/30 text-[11px] font-mono text-[#22c55e] break-all leading-relaxed animate-in fade-in duration-200">
                   {simulatedSmsOutput}
                 </div>
               )}
             </div>
           </div>
 
-          <div className="pt-4 border-t border-white/10 mt-4 text-[11px] font-mono text-white/40 flex justify-between">
-            <span>Hardware Model: GeoSentinel-GW-Pro</span>
+          <div className="pt-4 border-t border-[#161920] mt-5 text-[11px] font-mono text-[#717682] flex justify-between">
+            <span>Hardware: GeoSentinel-GW-Pro</span>
             <span>MAC: {gateway.mac}</span>
           </div>
         </div>

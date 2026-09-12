@@ -39,8 +39,8 @@ const AppContent: React.FC = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/5 border border-white/10 text-[#818cf8]">
             <span className="text-2xl font-mono">🔒</span>
           </div>
-          <h2 className="font-serif text-3xl text-white">Government &amp; Operator Access Only</h2>
-          <p className="font-mono text-sm text-white/50 max-w-md mx-auto">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Government &amp; Operator Access Only</h2>
+          <p className="text-sm text-[#94a3b8] max-w-md mx-auto leading-relaxed">
             This module requires official Directorate General of Mines Safety (DGMS) credentials. Villagers and public citizens can access the Live Safety Board and Citizen Crack Portal without logging in.
           </p>
           <div className="flex justify-center gap-4 pt-4">
@@ -66,7 +66,7 @@ const AppContent: React.FC = () => {
               <span className="text-xs font-mono text-[#818cf8] uppercase tracking-wider block mb-1">
                 FULL-SCREEN CARTOGRAPHY
               </span>
-              <h1 className="font-serif text-2xl md:text-3xl text-white tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
                 Geological Subsidence GIS Surface Heatmap &amp; Overburden Contours
               </h1>
             </div>

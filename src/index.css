@@ -23,9 +23,8 @@
     --color-alert-evacuate: #ef4444;
 
     /* Typography */
+    --font-sans: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-inter: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --font-alpha-lyrae: 'Cormorant Garamond', 'Alpha Lyrae', Georgia, serif;
-    --font-iowan-old-style: 'Source Serif 4', 'Lora', 'Iowan Old Style', Georgia, serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
     /* Border Radius */
@@ -43,11 +42,13 @@
   body {
     background-color: var(--color-void-black);
     color: var(--color-ghost-white);
-    font-family: var(--font-inter);
-    letter-spacing: -0.03em;
+    font-family: var(--font-sans);
+    letter-spacing: -0.015em;
     min-height: 100vh;
     margin: 0;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /* Scrollbar Styling */
