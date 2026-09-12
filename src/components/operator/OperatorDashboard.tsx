@@ -672,17 +672,9 @@ export const OperatorDashboard: React.FC = () => {
           {/* Sub-view: Sensor Telemetry Table */}
           {activeNav === 'nodes' && (
             <div className="space-y-4 max-w-[1400px] mx-auto">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-white">Live Sensor Nodes</h2>
-                  <p className="text-xs text-[#888] mt-0.5">Real-time telemetry from deployed IoT mesh nodes</p>
-                </div>
-                <button
-                  onClick={() => setActiveNav('dashboard')}
-                  className="text-xs font-mono text-[#a3e635] hover:underline"
-                >
-                  ← Back to Dashboard
-                </button>
+              <div>
+                <h2 className="text-xl font-bold text-white">Live Sensor Nodes</h2>
+                <p className="text-xs text-[#888] mt-0.5">Real-time telemetry from deployed IoT mesh nodes</p>
               </div>
 
               <div className="rounded-[18px] border border-[#181b20] bg-[#0a0c0f] overflow-hidden">
@@ -736,17 +728,9 @@ export const OperatorDashboard: React.FC = () => {
           {/* Sub-view: GIS Heatmap */}
           {activeNav === 'gis' && (
             <div className="space-y-4 max-w-[1400px] mx-auto">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-white">GIS Surface Heatmap</h2>
-                  <p className="text-xs text-[#888] mt-0.5">Topographic subsidence and overburden contour projection</p>
-                </div>
-                <button
-                  onClick={() => setActiveNav('dashboard')}
-                  className="text-xs font-mono text-[#a3e635] hover:underline"
-                >
-                  ← Back to Dashboard
-                </button>
+              <div>
+                <h2 className="text-xl font-bold text-white">GIS Surface Heatmap</h2>
+                <p className="text-xs text-[#888] mt-0.5">Topographic subsidence and overburden contour projection</p>
               </div>
               <GISHeatmap />
             </div>
@@ -755,17 +739,9 @@ export const OperatorDashboard: React.FC = () => {
           {/* Sub-view: Mesh Topology */}
           {activeNav === 'topology' && (
             <div className="space-y-4 max-w-[1400px] mx-auto">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-white">Mesh Topology</h2>
-                  <p className="text-xs text-[#888] mt-0.5">LoRa multi-hop routing graph and RSSI signal links</p>
-                </div>
-                <button
-                  onClick={() => setActiveNav('dashboard')}
-                  className="text-xs font-mono text-[#a3e635] hover:underline"
-                >
-                  ← Back to Dashboard
-                </button>
+              <div>
+                <h2 className="text-xl font-bold text-white">Mesh Topology</h2>
+                <p className="text-xs text-[#888] mt-0.5">LoRa multi-hop routing graph and RSSI signal links</p>
               </div>
               <MeshTopologyView />
             </div>
@@ -774,17 +750,9 @@ export const OperatorDashboard: React.FC = () => {
           {/* Sub-view: Edge Gateway */}
           {activeNav === 'gateway' && (
             <div className="space-y-4 max-w-[1400px] mx-auto">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-white">Edge Gateway Details</h2>
-                  <p className="text-xs text-[#888] mt-0.5">Local offline edge compute node and sirens</p>
-                </div>
-                <button
-                  onClick={() => setActiveNav('dashboard')}
-                  className="text-xs font-mono text-[#a3e635] hover:underline"
-                >
-                  ← Back to Dashboard
-                </button>
+              <div>
+                <h2 className="text-xl font-bold text-white">Edge Gateway Details</h2>
+                <p className="text-xs text-[#888] mt-0.5">Local offline edge compute node and sirens</p>
               </div>
               <GatewayEdgeView />
             </div>
@@ -793,17 +761,9 @@ export const OperatorDashboard: React.FC = () => {
           {/* Sub-view: AI Copilot & Risk Math */}
           {(activeNav === 'copilot' || activeNav === 'risk') && (
             <div className="space-y-4 max-w-[1400px] mx-auto">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-white">AI Geotechnical Copilot</h2>
-                  <p className="text-xs text-[#888] mt-0.5">Automated displacement forecasting and Knothe profile modeling</p>
-                </div>
-                <button
-                  onClick={() => setActiveNav('dashboard')}
-                  className="text-xs font-mono text-[#a3e635] hover:underline"
-                >
-                  ← Back to Dashboard
-                </button>
+              <div>
+                <h2 className="text-xl font-bold text-white">AI Geotechnical Copilot</h2>
+                <p className="text-xs text-[#888] mt-0.5">Automated displacement forecasting and Knothe profile modeling</p>
               </div>
 
               <div className="p-6 rounded-[18px] border border-[#181b20] bg-[#0a0c0f] space-y-4">
@@ -834,21 +794,13 @@ export const OperatorDashboard: React.FC = () => {
           {activeNav === 'citizen' && (
             <div className="space-y-6 max-w-[1400px] mx-auto">
               {/* Header Title Row */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                    Citizen Crack Logs &amp; Geotechnical Triage
-                  </h2>
-                  <p className="text-xs sm:text-sm text-[#828894] mt-0.5">
-                    Crowdsourced village ground fissures cross-corroborated against IoT tiltmeter &amp; extensometer telemetry
-                  </p>
-                </div>
-                <button
-                  onClick={() => setActiveNav('dashboard')}
-                  className="text-xs font-mono text-[#a3e635] hover:underline self-start sm:self-auto cursor-pointer"
-                >
-                  ← Back to Dashboard
-                </button>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  Citizen Crack Logs &amp; Geotechnical Triage
+                </h2>
+                <p className="text-xs sm:text-sm text-[#828894] mt-0.5">
+                  Crowdsourced village ground fissures cross-corroborated against IoT tiltmeter &amp; extensometer telemetry
+                </p>
               </div>
 
               {/* 4 Summary Stat Cards */}
@@ -1081,17 +1033,9 @@ export const OperatorDashboard: React.FC = () => {
           {/* Sub-view: Alert Dispatches */}
           {activeNav === 'alerts' && (
             <div className="space-y-4 max-w-[1400px] mx-auto">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-white">Alert Dispatch Log</h2>
-                  <p className="text-xs text-[#888] mt-0.5">Official emergency broadcast records and SMS dispatch metrics</p>
-                </div>
-                <button
-                  onClick={() => setActiveNav('dashboard')}
-                  className="text-xs font-mono text-[#a3e635] hover:underline"
-                >
-                  ← Back to Dashboard
-                </button>
+              <div>
+                <h2 className="text-xl font-bold text-white">Alert Dispatch Log</h2>
+                <p className="text-xs text-[#888] mt-0.5">Official emergency broadcast records and SMS dispatch metrics</p>
               </div>
 
               <div className="space-y-2.5">
@@ -1120,17 +1064,9 @@ export const OperatorDashboard: React.FC = () => {
           {/* Sub-view: Admin Settings & Threshold Governance */}
           {activeNav === 'admin' && (
             <div className="space-y-4 max-w-[1400px] mx-auto">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-white">System Security &amp; Calibration</h2>
-                  <p className="text-xs text-[#888] mt-0.5">Per-node threshold calibration, authentication keys, and assembly shelters</p>
-                </div>
-                <button
-                  onClick={() => setActiveNav('dashboard')}
-                  className="text-xs font-mono text-[#a3e635] hover:underline"
-                >
-                  ← Back to Dashboard
-                </button>
+              <div>
+                <h2 className="text-xl font-bold text-white">System Security &amp; Calibration</h2>
+                <p className="text-xs text-[#888] mt-0.5">Per-node threshold calibration, authentication keys, and assembly shelters</p>
               </div>
               <AdminSettingsView />
             </div>

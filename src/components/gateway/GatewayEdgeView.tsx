@@ -2,13 +2,9 @@ import React, { useState } from 'react';
 import { useGeoSentinel } from '../../context/GeoSentinelContext';
 import { 
   Server, 
-  Wifi, 
-  WifiOff, 
   Radio, 
   HardDrive, 
   Battery, 
-  Volume2, 
-  VolumeX, 
   Zap 
 } from '../icons';
 
@@ -17,9 +13,7 @@ export const GatewayEdgeView: React.FC = () => {
     gateway, 
     risk, 
     nodes, 
-    toggleInternetConnection, 
-    flushGatewayBuffer, 
-    triggerEdgeSiren 
+    flushGatewayBuffer 
   } = useGeoSentinel();
 
   const [syncProtocol, setSyncProtocol] = useState<'HTTP POST (JSON)' | 'MQTT v5.0'>('HTTP POST (JSON)');
@@ -37,52 +31,6 @@ export const GatewayEdgeView: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fadeIn pb-16">
-      {/* Top Banner */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 p-5 rounded-xl border border-white/10 bg-[#050607]">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium border ${
-              gateway.internetConnected 
-                ? 'border-[#22c55e]/30 bg-[#22c55e]/10 text-[#22c55e]' 
-                : 'border-[#eab308]/30 bg-[#eab308]/10 text-[#eab308] animate-pulse'
-            }`}>
-              {gateway.internetConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
-              {gateway.internetConnected ? 'WAN CLOUD SYNC ACTIVE' : 'AIR-GAPPED ZERO-INTERNET EDGE MODE'}
-            </span>
-            <span className="text-xs font-mono text-white/40">CAPTIVE AP: {gateway.wifiHotspotSsid}</span>
-          </div>
-          <h1 className="font-serif text-2xl md:text-3xl text-white tracking-tight">
-            Edge Gateway &amp; Zero-Dependency Appliance
-          </h1>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={toggleInternetConnection}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-semibold transition-all ${
-              gateway.internetConnected
-                ? 'border border-[#eab308]/40 bg-[#eab308]/10 text-[#eab308] hover:bg-[#eab308]/20'
-                : 'bg-[#22c55e] text-black hover:bg-[#16a34a]'
-            }`}
-          >
-            {gateway.internetConnected ? <WifiOff size={14} /> : <Wifi size={14} />}
-            {gateway.internetConnected ? 'SIMULATE INTERNET BLACKOUT' : 'RECONNECT WAN CLOUD'}
-          </button>
-
-          <button
-            onClick={() => triggerEdgeSiren(!gateway.localSirenActive)}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-medium transition-all ${
-              gateway.localSirenActive
-                ? 'bg-[#ef4444] text-white border border-[#ef4444] animate-pulse'
-                : 'border border-white/15 bg-white/5 hover:bg-white/10 text-white/80'
-            }`}
-          >
-            {gateway.localSirenActive ? <VolumeX size={14} /> : <Volume2 size={14} />}
-            {gateway.localSirenActive ? 'CUT SIREN RELAY' : 'DIRECT GPIO SIREN RELAY'}
-          </button>
-        </div>
-      </div>
-
       {/* Main Gateway Status Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Store & Forward Buffer */}
