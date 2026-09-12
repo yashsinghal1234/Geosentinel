@@ -263,9 +263,6 @@ export interface MineSite {
   totalSensors: number;
   activeSectorsCount: number;
   overallRisk: 'Normal' | 'Monitor' | 'Advisory' | 'Warning' | 'Critical';
-  lat: number;
-  lng: number;
-  zoom?: number;
 }
 
 export interface SectorInfo {
@@ -277,8 +274,5 @@ export interface SectorInfo {
   activeSensors: number;
   maxRiskScore: number;
   riskLevel: 'Normal' | 'Monitor' | 'Advisory' | 'Warning' | 'Critical';
-  centerLat?: number;
-  centerLng?: number;
-  zoom?: number;
 }
 
