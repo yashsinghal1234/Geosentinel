@@ -80,116 +80,133 @@ export const TopNav: React.FC = () => {
               <ChevronDown size={13} className={`text-[#808080] transition-transform duration-200 ${isVillageDropdownOpen ? 'rotate-180 text-white' : ''}`} />
             </button>
 
-            {/* Dropdown Menu */}
+            {/* Dropdown Menu - Sleek Pitch Black Horizontal Menu */}
             {isVillageDropdownOpen && (
               <div 
                 onMouseLeave={() => setIsVillageDropdownOpen(false)}
-                className="absolute left-0 top-full mt-2 w-72 rounded-2xl border border-[#262c38] bg-[#0c0e14]/95 p-2 shadow-2xl z-50 space-y-1 backdrop-blur-xl animate-in fade-in duration-150"
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-3 w-[800px] max-w-[92vw] rounded-2xl border border-[#262626] bg-[#000000] p-3 shadow-[0_25px_60px_rgba(0,0,0,0.95),0_0_1px_1px_rgba(255,255,255,0.08)] z-50 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
               >
-                <button
-                  onClick={() => {
-                    setActiveTab('public');
-                    setVillageSubTab('status');
-                    setIsVillageDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-colors cursor-pointer ${
-                    activeTab === 'public' && villageSubTab === 'status' 
-                      ? 'bg-[#181d26] text-white border border-[#3b4354]' 
-                      : 'text-[#828894] hover:text-white hover:bg-[#121620]'
-                  }`}
-                >
-                  <div className="p-1.5 rounded-lg bg-[#a3e635]/10 text-[#a3e635]">
-                    <Activity size={14} />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-white">Live Emergency Status</div>
-                    <span className="text-[10px] text-[#717682]">Evacuation stage &amp; sirens</span>
-                  </div>
-                </button>
+                <div className="grid grid-cols-5 gap-2">
+                  {/* Option 1: Live Emergency Status */}
+                  <button
+                    onClick={() => {
+                      setActiveTab('public');
+                      setVillageSubTab('status');
+                      setIsVillageDropdownOpen(false);
+                    }}
+                    className={`flex flex-col items-start text-left p-3 rounded-xl border transition-all cursor-pointer group ${
+                      activeTab === 'public' && villageSubTab === 'status' 
+                        ? 'bg-[#141414] border-[#444444] text-white shadow-sm' 
+                        : 'bg-[#080808] border-[#1c1c1c] hover:bg-[#121212] hover:border-[#333333] text-[#a1a1aa] hover:text-white'
+                    }`}
+                  >
+                    <div className="p-2 rounded-lg bg-[#111111] border border-[#262626] text-[#a3e635] mb-2 group-hover:scale-105 transition-transform">
+                      <Activity size={15} />
+                    </div>
+                    <div className="text-[13px] font-bold text-white group-hover:text-[#a3e635] transition-colors leading-tight">
+                      Live Status
+                    </div>
+                    <span className="text-[11px] text-[#71717a] mt-1 leading-snug">
+                      Evacuation &amp; sirens
+                    </span>
+                  </button>
 
-                <button
-                  onClick={() => {
-                    setActiveTab('public');
-                    setVillageSubTab('report');
-                    setIsVillageDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-colors cursor-pointer ${
-                    activeTab === 'public' && villageSubTab === 'report' 
-                      ? 'bg-[#181d26] text-white border border-[#3b4354]' 
-                      : 'text-[#828894] hover:text-white hover:bg-[#121620]'
-                  }`}
-                >
-                  <div className="p-1.5 rounded-lg bg-[#38bdf8]/10 text-[#38bdf8]">
-                    <Camera size={14} />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-white">Report Ground Fissure</div>
-                    <span className="text-[10px] text-[#717682]">Upload photo &amp; crack width</span>
-                  </div>
-                </button>
+                  {/* Option 2: Report Ground Fissure */}
+                  <button
+                    onClick={() => {
+                      setActiveTab('public');
+                      setVillageSubTab('report');
+                      setIsVillageDropdownOpen(false);
+                    }}
+                    className={`flex flex-col items-start text-left p-3 rounded-xl border transition-all cursor-pointer group ${
+                      activeTab === 'public' && villageSubTab === 'report' 
+                        ? 'bg-[#141414] border-[#444444] text-white shadow-sm' 
+                        : 'bg-[#080808] border-[#1c1c1c] hover:bg-[#121212] hover:border-[#333333] text-[#a1a1aa] hover:text-white'
+                    }`}
+                  >
+                    <div className="p-2 rounded-lg bg-[#111111] border border-[#262626] text-[#38bdf8] mb-2 group-hover:scale-105 transition-transform">
+                      <Camera size={15} />
+                    </div>
+                    <div className="text-[13px] font-bold text-white group-hover:text-[#38bdf8] transition-colors leading-tight">
+                      Report Crack
+                    </div>
+                    <span className="text-[11px] text-[#71717a] mt-1 leading-snug">
+                      Photo &amp; crack width
+                    </span>
+                  </button>
 
-                <button
-                  onClick={() => {
-                    setActiveTab('public');
-                    setVillageSubTab('shelters');
-                    setIsVillageDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-colors cursor-pointer ${
-                    activeTab === 'public' && villageSubTab === 'shelters' 
-                      ? 'bg-[#181d26] text-white border border-[#3b4354]' 
-                      : 'text-[#828894] hover:text-white hover:bg-[#121620]'
-                  }`}
-                >
-                  <div className="p-1.5 rounded-lg bg-[#22c55e]/10 text-[#22c55e]">
-                    <ShieldCheck size={14} />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-white">Assembly Shelters</div>
-                    <span className="text-[10px] text-[#717682]">Roster &amp; safe high ground</span>
-                  </div>
-                </button>
+                  {/* Option 3: Assembly Shelters */}
+                  <button
+                    onClick={() => {
+                      setActiveTab('public');
+                      setVillageSubTab('shelters');
+                      setIsVillageDropdownOpen(false);
+                    }}
+                    className={`flex flex-col items-start text-left p-3 rounded-xl border transition-all cursor-pointer group ${
+                      activeTab === 'public' && villageSubTab === 'shelters' 
+                        ? 'bg-[#141414] border-[#444444] text-white shadow-sm' 
+                        : 'bg-[#080808] border-[#1c1c1c] hover:bg-[#121212] hover:border-[#333333] text-[#a1a1aa] hover:text-white'
+                    }`}
+                  >
+                    <div className="p-2 rounded-lg bg-[#111111] border border-[#262626] text-[#22c55e] mb-2 group-hover:scale-105 transition-transform">
+                      <ShieldCheck size={15} />
+                    </div>
+                    <div className="text-[13px] font-bold text-white group-hover:text-[#22c55e] transition-colors leading-tight">
+                      Shelters
+                    </div>
+                    <span className="text-[11px] text-[#71717a] mt-1 leading-snug">
+                      Roster &amp; safe zones
+                    </span>
+                  </button>
 
-                <button
-                  onClick={() => {
-                    setActiveTab('public');
-                    setVillageSubTab('checklist');
-                    setIsVillageDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-colors cursor-pointer ${
-                    activeTab === 'public' && villageSubTab === 'checklist' 
-                      ? 'bg-[#181d26] text-white border border-[#3b4354]' 
-                      : 'text-[#828894] hover:text-white hover:bg-[#121620]'
-                  }`}
-                >
-                  <div className="p-1.5 rounded-lg bg-[#f59e0b]/10 text-[#f59e0b]">
-                    <ShieldAlert size={14} />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-white">Safety Checklist &amp; Hotlines</div>
-                    <span className="text-[10px] text-[#717682]">112, DGMS &amp; Panchayat</span>
-                  </div>
-                </button>
+                  {/* Option 4: Action Checklist */}
+                  <button
+                    onClick={() => {
+                      setActiveTab('public');
+                      setVillageSubTab('checklist');
+                      setIsVillageDropdownOpen(false);
+                    }}
+                    className={`flex flex-col items-start text-left p-3 rounded-xl border transition-all cursor-pointer group ${
+                      activeTab === 'public' && villageSubTab === 'checklist' 
+                        ? 'bg-[#141414] border-[#444444] text-white shadow-sm' 
+                        : 'bg-[#080808] border-[#1c1c1c] hover:bg-[#121212] hover:border-[#333333] text-[#a1a1aa] hover:text-white'
+                    }`}
+                  >
+                    <div className="p-2 rounded-lg bg-[#111111] border border-[#262626] text-[#f59e0b] mb-2 group-hover:scale-105 transition-transform">
+                      <ShieldAlert size={15} />
+                    </div>
+                    <div className="text-[13px] font-bold text-white group-hover:text-[#f59e0b] transition-colors leading-tight">
+                      Checklist
+                    </div>
+                    <span className="text-[11px] text-[#71717a] mt-1 leading-snug">
+                      112 &amp; Panchayat SOS
+                    </span>
+                  </button>
 
-                <button
-                  onClick={() => {
-                    setActiveTab('public');
-                    setVillageSubTab('docs');
-                    setIsVillageDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-colors cursor-pointer ${
-                    activeTab === 'public' && villageSubTab === 'docs' 
-                      ? 'bg-[#181d26] text-white border border-[#3b4354]' 
-                      : 'text-[#828894] hover:text-white hover:bg-[#121620]'
-                  }`}
-                >
-                  <div className="p-1.5 rounded-lg bg-[#a78bfa]/10 text-[#a78bfa]">
-                    <Sparkles size={14} />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-white">Village Safety Guide</div>
-                    <span className="text-[10px] text-[#717682]">Disaster manuals &amp; Wi-Fi</span>
-                  </div>
-                </button>
+                  {/* Option 5: Village Safety Guide */}
+                  <button
+                    onClick={() => {
+                      setActiveTab('public');
+                      setVillageSubTab('docs');
+                      setIsVillageDropdownOpen(false);
+                    }}
+                    className={`flex flex-col items-start text-left p-3 rounded-xl border transition-all cursor-pointer group ${
+                      activeTab === 'public' && villageSubTab === 'docs' 
+                        ? 'bg-[#141414] border-[#444444] text-white shadow-sm' 
+                        : 'bg-[#080808] border-[#1c1c1c] hover:bg-[#121212] hover:border-[#333333] text-[#a1a1aa] hover:text-white'
+                    }`}
+                  >
+                    <div className="p-2 rounded-lg bg-[#111111] border border-[#262626] text-[#a78bfa] mb-2 group-hover:scale-105 transition-transform">
+                      <Sparkles size={15} />
+                    </div>
+                    <div className="text-[13px] font-bold text-white group-hover:text-[#a78bfa] transition-colors leading-tight">
+                      Safety Guide
+                    </div>
+                    <span className="text-[11px] text-[#71717a] mt-1 leading-snug">
+                      Disaster SOP &amp; Wi-Fi
+                    </span>
+                  </button>
+                </div>
               </div>
             )}
           </div>

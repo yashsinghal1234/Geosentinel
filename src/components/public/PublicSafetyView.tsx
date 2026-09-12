@@ -188,7 +188,7 @@ export const PublicSafetyView: React.FC = () => {
       {/* ========================================================================= */}
       {/* 1. TOP HEADER & LOCAL WI-FI HOTSPOT BAR (Cleaned Up)                      */}
       {/* ========================================================================= */}
-      <div className="border-b border-[#1a1f29] pb-5">
+      <div className="border-b border-[#222222] pb-5">
         <div className="flex items-center gap-2.5">
           <span className="h-3 w-3 rounded-full bg-[#3fcb7f] animate-ping" />
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
@@ -204,7 +204,7 @@ export const PublicSafetyView: React.FC = () => {
       </div>
 
       {/* Edge Hotspot & Language Switcher Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#1e232d] bg-[#080a0d] px-4.5 py-3 text-xs shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#222222] bg-[#080808] px-4.5 py-3 text-xs shadow-sm">
         <div className="flex items-center gap-2.5 text-[#3fcb7f]">
           <span className="h-2 w-2 rounded-full bg-[#3fcb7f] animate-ping" />
           <span className="font-semibold text-white">{t.offlineEdgeBadge}</span>
@@ -212,7 +212,7 @@ export const PublicSafetyView: React.FC = () => {
         </div>
 
         {/* Language Selector in 5 Local Tongues */}
-        <div className="flex items-center gap-1 bg-[#0f1218] p-1 rounded-xl border border-[#222733]">
+        <div className="flex items-center gap-1 bg-[#000000] p-1 rounded-xl border border-[#222222]">
           {(['en', 'hi', 'bn', 'or', 'sat'] as const).map((lang) => (
             <button
               key={lang}
@@ -342,8 +342,8 @@ export const PublicSafetyView: React.FC = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left: Crack Submission Form */}
-            <div className="lg:col-span-7 p-6 rounded-2xl border border-[#1e232d] bg-[#080a0d] space-y-5 shadow-sm">
-              <div className="border-b border-[#161920] pb-3.5">
+            <div className="lg:col-span-7 p-6 rounded-2xl border border-[#222222] bg-[#080808] space-y-5 shadow-sm">
+              <div className="border-b border-[#1c1c1c] pb-3.5">
                 <div className="flex items-center gap-2">
                   <Camera size={18} className="text-[#38bdf8]" />
                   <h2 className="text-base font-bold text-white tracking-tight">
@@ -373,7 +373,7 @@ export const PublicSafetyView: React.FC = () => {
                         className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           selectedTemplateIndex === idx && !customPhotoUrl
                             ? 'border-[#38bdf8] bg-[#38bdf8]/15 ring-1 ring-[#38bdf8]'
-                            : 'border-[#222733] bg-[#0c0e14] hover:border-[#3b4354]'
+                            : 'border-[#222222] bg-[#000000] hover:border-[#383838]'
                         }`}
                       >
                         <div className="h-14 rounded-lg overflow-hidden bg-black/60 mb-1.5 border border-white/5">
@@ -395,7 +395,7 @@ export const PublicSafetyView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-4 py-2 rounded-xl border border-[#2d3444] bg-[#12161f] hover:bg-[#1b202c] text-white font-semibold text-xs flex items-center gap-2 cursor-pointer transition-colors"
+                      className="px-4 py-2 rounded-xl border border-[#262626] bg-[#141414] hover:bg-[#1f1f1f] text-white font-semibold text-xs flex items-center gap-2 cursor-pointer transition-colors"
                     >
                       <Upload size={13} className="text-[#a3e635]" />
                       <span>{customPhotoUrl ? 'Replace Uploaded Image' : 'Upload From Phone / Camera'}</span>
@@ -407,7 +407,7 @@ export const PublicSafetyView: React.FC = () => {
                 </div>
 
                 {/* 2. Aperture Slider */}
-                <div className="pt-2 border-t border-[#161920]">
+                <div className="pt-2 border-t border-[#1c1c1c]">
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-[#828894] font-semibold">2. Estimated Crack Aperture (Width)</label>
                     <span className="text-base font-bold font-mono text-white">{crackWidth} mm</span>
@@ -418,7 +418,7 @@ export const PublicSafetyView: React.FC = () => {
                     max={60}
                     value={crackWidth}
                     onChange={(e) => setCrackWidth(Number(e.target.value))}
-                    className="w-full h-2 bg-[#1c212c] rounded-lg appearance-none cursor-pointer accent-[#38bdf8]"
+                    className="w-full h-2 bg-[#1c1c1c] rounded-lg appearance-none cursor-pointer accent-[#38bdf8]"
                   />
                   <div className="mt-2 flex items-center justify-between text-[10px] font-mono">
                     <span className={`px-2.5 py-1 rounded-full border ${severityTag.color}`}>
@@ -429,7 +429,7 @@ export const PublicSafetyView: React.FC = () => {
                 </div>
 
                 {/* 3. Location & GPS */}
-                <div className="pt-2 border-t border-[#161920] space-y-3">
+                <div className="pt-2 border-t border-[#1c1c1c] space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="text-[#828894] font-semibold">3. Location / Sector</label>
                     <button
@@ -444,7 +444,7 @@ export const PublicSafetyView: React.FC = () => {
                   <select
                     value={zone}
                     onChange={(e) => setZone(e.target.value)}
-                    className="w-full rounded-xl border border-[#262c38] bg-[#0c0e14] px-3.5 py-2.5 text-white font-medium focus:outline-none focus:border-[#38bdf8]"
+                    className="w-full rounded-xl border border-[#262626] bg-[#000000] px-3.5 py-2.5 text-white font-medium focus:outline-none focus:border-[#38bdf8]"
                   >
                     <option value="Sector 4 (Village Slope)">Sector 4 (Village Slope - Near High Ground)</option>
                     <option value="Sector 3 (Incline Gallery)">Sector 3 (Incline Gallery Buffer)</option>
@@ -454,7 +454,7 @@ export const PublicSafetyView: React.FC = () => {
                 </div>
 
                 {/* 4. Resident Contact & Notes */}
-                <div className="pt-2 border-t border-[#161920] grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="pt-2 border-t border-[#1c1c1c] grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[#828894] font-semibold mb-1">Your Name (Optional)</label>
                     <input
@@ -462,7 +462,7 @@ export const PublicSafetyView: React.FC = () => {
                       placeholder="e.g. Rakesh Kumar"
                       value={reporterName}
                       onChange={(e) => setReporterName(e.target.value)}
-                      className="w-full rounded-xl border border-[#262c38] bg-[#0c0e14] px-3 py-2 text-white placeholder-[#525763] focus:outline-none focus:border-[#38bdf8]"
+                      className="w-full rounded-xl border border-[#262626] bg-[#000000] px-3 py-2 text-white placeholder-[#525763] focus:outline-none focus:border-[#38bdf8]"
                     />
                   </div>
                   <div>
@@ -472,7 +472,7 @@ export const PublicSafetyView: React.FC = () => {
                       placeholder="+91 94311..."
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full rounded-xl border border-[#262c38] bg-[#0c0e14] px-3 py-2 text-white placeholder-[#525763] focus:outline-none focus:border-[#38bdf8]"
+                      className="w-full rounded-xl border border-[#262626] bg-[#000000] px-3 py-2 text-white placeholder-[#525763] focus:outline-none focus:border-[#38bdf8]"
                     />
                   </div>
                 </div>
@@ -484,7 +484,7 @@ export const PublicSafetyView: React.FC = () => {
                     placeholder="e.g. Crack widened overnight near water well. Water pipes buckling."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full rounded-xl border border-[#262c38] bg-[#0c0e14] px-3 py-2 text-white placeholder-[#525763] focus:outline-none focus:border-[#38bdf8]"
+                    className="w-full rounded-xl border border-[#262626] bg-[#000000] px-3 py-2 text-white placeholder-[#525763] focus:outline-none focus:border-[#38bdf8]"
                   />
                 </div>
 
@@ -500,9 +500,9 @@ export const PublicSafetyView: React.FC = () => {
             </div>
 
             {/* Right: Recent Community Crack Log Feed */}
-            <div className="lg:col-span-5 p-6 rounded-2xl border border-[#1e232d] bg-[#080a0d] flex flex-col justify-between shadow-sm space-y-4">
+            <div className="lg:col-span-5 p-6 rounded-2xl border border-[#222222] bg-[#080808] flex flex-col justify-between shadow-sm space-y-4">
               <div>
-                <div className="flex items-center justify-between border-b border-[#161920] pb-3.5">
+                <div className="flex items-center justify-between border-b border-[#1c1c1c] pb-3.5">
                   <div className="flex items-center gap-2">
                     <Activity size={16} className="text-[#a3e635]" />
                     <h3 className="text-sm font-bold text-white tracking-tight">Village Perimeter Crack Logs</h3>
@@ -512,7 +512,7 @@ export const PublicSafetyView: React.FC = () => {
 
                 <div className="space-y-3 mt-4 max-h-[480px] overflow-y-auto scrollbar-none pr-1">
                   {reports.map((r) => (
-                    <div key={r.id} className="p-3.5 rounded-xl border border-[#1a1f29] bg-[#050608] space-y-2">
+                    <div key={r.id} className="p-3.5 rounded-xl border border-[#1f1f1f] bg-[#000000] space-y-2">
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="font-mono font-bold text-white">{r.id}</span>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold border ${
@@ -543,7 +543,7 @@ export const PublicSafetyView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-[#161920] text-[11px] text-[#717682] flex items-center gap-1.5 font-mono">
+              <div className="pt-3 border-t border-[#1c1c1c] text-[11px] text-[#717682] flex items-center gap-1.5 font-mono">
                 <Sparkles size={13} className="text-[#a3e635]" />
                 <span>AI model corroborates photo fissures with IoT tilt meters</span>
               </div>
@@ -557,8 +557,8 @@ export const PublicSafetyView: React.FC = () => {
       {/* ========================================================================= */}
       {villageSubTab === 'shelters' && (
         <div className="space-y-5">
-          <div className="p-6 rounded-2xl border border-[#1e232d] bg-[#080a0d] space-y-4 shadow-sm">
-            <div className="flex items-center justify-between border-b border-[#161920] pb-3.5">
+          <div className="p-6 rounded-2xl border border-[#222222] bg-[#080808] space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-[#1c1c1c] pb-3.5">
               <div className="flex items-center gap-2.5">
                 <ShieldCheck className="h-5 w-5 text-[#3fcb7f]" />
                 <h3 className="text-base font-bold text-white">{t.safeAssembly}</h3>
@@ -570,7 +570,7 @@ export const PublicSafetyView: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {assemblyPoints.map((ap) => (
-                <div key={ap.id} className="rounded-xl border border-[#1a1f29] bg-[#050608] p-4.5 space-y-3 shadow-sm">
+                <div key={ap.id} className="rounded-xl border border-[#1f1f1f] bg-[#000000] p-4.5 space-y-3 shadow-sm">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <h4 className="text-base font-bold text-white">{ap.name}</h4>
@@ -584,7 +584,7 @@ export const PublicSafetyView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="w-full bg-[#161922] h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-[#141414] h-2 rounded-full overflow-hidden">
                     <div 
                       className="bg-[#3fcb7f] h-full rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(100, (ap.currentCheckedIn / ap.capacityPersons) * 100)}%` }}
@@ -593,13 +593,13 @@ export const PublicSafetyView: React.FC = () => {
 
                   <div className="flex flex-wrap gap-1.5 text-[11px] text-[#cbd5e1]">
                     {ap.amenities.map((am, i) => (
-                      <span key={i} className="rounded-lg border border-[#222733] bg-[#0d1016] px-2 py-0.5">
+                      <span key={i} className="rounded-lg border border-[#222222] bg-[#111111] px-2 py-0.5">
                         ✓ {am}
                       </span>
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-[#161920] pt-2.5 text-xs text-[#828894]">
+                  <div className="flex items-center justify-between border-t border-[#1c1c1c] pt-2.5 text-xs text-[#828894]">
                     <span>Officer: {ap.contactOfficer}</span>
                     <a href={`tel:${ap.officerPhone}`} className="text-[#3fcb7f] font-mono font-semibold flex items-center gap-1 hover:underline">
                       <PhoneCall className="h-3.5 w-3.5" />
@@ -623,16 +623,16 @@ export const PublicSafetyView: React.FC = () => {
       {/* ========================================================================= */}
       {villageSubTab === 'checklist' && (
         <div className="space-y-5">
-          <div className="p-6 rounded-2xl border border-[#1e232d] bg-[#080a0d] space-y-4 shadow-sm">
-            <div className="flex items-center gap-2.5 border-b border-[#161920] pb-3.5">
+          <div className="p-6 rounded-2xl border border-[#222222] bg-[#080808] space-y-4 shadow-sm">
+            <div className="flex items-center gap-2.5 border-b border-[#1c1c1c] pb-3.5">
               <ShieldAlert className="h-5 w-5 text-[#fb923c]" />
               <h3 className="text-base font-bold text-white">{t.emergencyGuideTitle}</h3>
             </div>
 
             <ul className="space-y-3 text-xs sm:text-sm text-[#cbd5e1]">
               {t.actionItems.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-3 p-2.5 rounded-xl bg-[#050608] border border-[#161920]">
-                  <span className="h-6 w-6 rounded-full bg-[#181d26] text-[#a3e635] font-mono text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                <li key={idx} className="flex items-start gap-3 p-2.5 rounded-xl bg-[#000000] border border-[#1f1f1f]">
+                  <span className="h-6 w-6 rounded-full bg-[#141414] text-[#a3e635] font-mono text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                     {idx + 1}
                   </span>
                   <span className="text-[#e8eaee] leading-relaxed pt-0.5">{item}</span>
@@ -641,20 +641,20 @@ export const PublicSafetyView: React.FC = () => {
             </ul>
 
             {/* Emergency Hotline Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-[#161920]">
-              <div className="p-3.5 rounded-xl bg-[#050608] border border-[#222733] text-center space-y-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-[#1c1c1c]">
+              <div className="p-3.5 rounded-xl bg-[#000000] border border-[#222222] text-center space-y-1">
                 <span className="text-[10px] font-mono text-[#828894] uppercase">National Disaster Help</span>
                 <div className="text-lg font-bold font-mono text-[#38bdf8]">112</div>
                 <span className="text-[10px] text-[#717682] block">Toll-Free 24/7</span>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-[#050608] border border-[#222733] text-center space-y-1">
+              <div className="p-3.5 rounded-xl bg-[#000000] border border-[#222222] text-center space-y-1">
                 <span className="text-[10px] font-mono text-[#828894] uppercase">DGMS Mining Safety</span>
                 <div className="text-lg font-bold font-mono text-[#22c55e]">1800-345-6789</div>
                 <span className="text-[10px] text-[#717682] block">Dhanbad HQ</span>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-[#050608] border border-[#222733] text-center space-y-1">
+              <div className="p-3.5 rounded-xl bg-[#000000] border border-[#222222] text-center space-y-1">
                 <span className="text-[10px] font-mono text-[#828894] uppercase">Local Panchayat SOS</span>
                 <div className="text-lg font-bold font-mono text-[#f59e0b]">+91 94311-88421</div>
                 <span className="text-[10px] text-[#717682] block">Village Headman</span>
@@ -669,8 +669,8 @@ export const PublicSafetyView: React.FC = () => {
       {/* ========================================================================= */}
       {villageSubTab === 'docs' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-2xl border border-[#1e232d] bg-[#080a0d] space-y-6 shadow-sm">
-            <div className="border-b border-[#161920] pb-4">
+          <div className="p-6 rounded-2xl border border-[#222222] bg-[#080808] space-y-6 shadow-sm">
+            <div className="border-b border-[#1c1c1c] pb-4">
               <div className="flex items-center gap-2.5">
                 <Sparkles size={18} className="text-[#a78bfa]" />
                 <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
@@ -711,11 +711,11 @@ export const PublicSafetyView: React.FC = () => {
             </div>
 
             {/* Section B: Siren Audio Code Reference */}
-            <div className="space-y-3 pt-3 border-t border-[#161920]">
+            <div className="space-y-3 pt-3 border-t border-[#1c1c1c]">
               <h4 className="text-xs font-mono uppercase tracking-wider text-[#a3e635] font-bold">
                 2. Solar Gateway Edge Siren Acoustic Signals
               </h4>
-              <div className="p-4 rounded-xl border border-[#1e232d] bg-[#050608] space-y-2 text-xs">
+              <div className="p-4 rounded-xl border border-[#222222] bg-[#000000] space-y-2 text-xs">
                 <div className="flex items-center justify-between pb-2 border-b border-white/5">
                   <span className="font-bold text-white">Three Short High-Pitch Pulses (500Hz)</span>
                   <span className="text-[#ef4444] font-mono font-bold">MANDATORY EVACUATION</span>
@@ -732,7 +732,7 @@ export const PublicSafetyView: React.FC = () => {
             </div>
 
             {/* Section C: Offline Local Wi-Fi Connection Guide */}
-            <div className="space-y-3 pt-3 border-t border-[#161920]">
+            <div className="space-y-3 pt-3 border-t border-[#1c1c1c]">
               <h4 className="text-xs font-mono uppercase tracking-wider text-[#818cf8] font-bold">
                 3. Zero-Internet Edge Wi-Fi Access
               </h4>
@@ -749,8 +749,8 @@ export const PublicSafetyView: React.FC = () => {
       {/* ========================================================================= */}
       {showCheckInModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
-          <div className="relative w-full max-w-md rounded-2xl border border-[#262c38] bg-[#0c0e14] p-6 shadow-2xl space-y-5 animate-in fade-in duration-200">
-            <div className="flex items-start justify-between border-b border-[#1a1f29] pb-3">
+          <div className="relative w-full max-w-md rounded-2xl border border-[#222222] bg-[#000000] p-6 shadow-2xl space-y-5 animate-in fade-in duration-200">
+            <div className="flex items-start justify-between border-b border-[#1c1c1c] pb-3">
               <div>
                 <h3 className="text-lg font-bold text-white">
                   {showCheckInModal === 'safe' ? "I'm Safe Check-In" : "Emergency SOS Check-In"}
@@ -775,7 +775,7 @@ export const PublicSafetyView: React.FC = () => {
                   placeholder="e.g. Manoj Soren"
                   value={residentName}
                   onChange={(e) => setResidentName(e.target.value)}
-                  className="w-full rounded-xl border border-[#262c38] bg-black px-3.5 py-2.5 text-white placeholder-[#525763] focus:outline-none focus:border-[#3fcb7f]"
+                  className="w-full rounded-xl border border-[#262626] bg-[#0a0a0a] px-3.5 py-2.5 text-white placeholder-[#525763] focus:outline-none focus:border-[#3fcb7f]"
                 />
               </div>
 
@@ -788,7 +788,7 @@ export const PublicSafetyView: React.FC = () => {
                     max={20}
                     value={familyCount}
                     onChange={(e) => setFamilyCount(Number(e.target.value))}
-                    className="w-full rounded-xl border border-[#262c38] bg-black px-3.5 py-2.5 text-white focus:outline-none focus:border-[#3fcb7f]"
+                    className="w-full rounded-xl border border-[#262626] bg-[#0a0a0a] px-3.5 py-2.5 text-white focus:outline-none focus:border-[#3fcb7f]"
                   />
                 </div>
 
@@ -799,7 +799,7 @@ export const PublicSafetyView: React.FC = () => {
                     placeholder="+91 94311..."
                     value={residentPhone}
                     onChange={(e) => setResidentPhone(e.target.value)}
-                    className="w-full rounded-xl border border-[#262c38] bg-black px-3.5 py-2.5 text-white placeholder-[#525763] focus:outline-none focus:border-[#3fcb7f]"
+                    className="w-full rounded-xl border border-[#262626] bg-[#0a0a0a] px-3.5 py-2.5 text-white placeholder-[#525763] focus:outline-none focus:border-[#3fcb7f]"
                   />
                 </div>
               </div>
@@ -811,7 +811,7 @@ export const PublicSafetyView: React.FC = () => {
                   placeholder="e.g. Hall 2 at Community Center"
                   value={locationNote}
                   onChange={(e) => setLocationNote(e.target.value)}
-                  className="w-full rounded-xl border border-[#262c38] bg-black px-3.5 py-2.5 text-white placeholder-[#525763] focus:outline-none focus:border-[#3fcb7f]"
+                  className="w-full rounded-xl border border-[#262626] bg-[#0a0a0a] px-3.5 py-2.5 text-white placeholder-[#525763] focus:outline-none focus:border-[#3fcb7f]"
                 />
               </div>
 
