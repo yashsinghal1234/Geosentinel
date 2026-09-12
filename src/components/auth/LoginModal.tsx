@@ -92,49 +92,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
           </div>
         )}
 
-        {/* Quick Demo Credentials */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-[11px] text-[#808080]">
-            <span>Verified Database Accounts:</span>
-            <span className="text-[#3fcb7f] font-mono text-[10px]">SECURE AUTH</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setError(null);
-                setEmail('admin@geo.com');
-                setPassword('282007@aA');
-              }}
-              className="flex flex-col items-start p-2.5 rounded-[8px] border border-[#262626] bg-[#0c0d0e] hover:border-[#3fcb7f]/50 hover:bg-[#121416] transition-all text-left group cursor-pointer"
-            >
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white group-hover:text-[#3fcb7f]">
-                <span>👑</span>
-                <span>DGMS Admin</span>
-              </div>
-              <span className="text-[10px] font-mono text-[#888888] truncate w-full">admin@geo.com</span>
-              <span className="text-[9px] font-mono text-[#555555]">pass: 282007@aA</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setError(null);
-                setEmail('operator@geosentinel.gov.in');
-                setPassword('password123');
-              }}
-              className="flex flex-col items-start p-2.5 rounded-[8px] border border-[#262626] bg-[#0c0d0e] hover:border-[#38bdf8]/50 hover:bg-[#121416] transition-all text-left group cursor-pointer"
-            >
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white group-hover:text-[#38bdf8]">
-                <span>🛡️</span>
-                <span>Chief Operator</span>
-              </div>
-              <span className="text-[10px] font-mono text-[#888888] truncate w-full">operator@geosentinel.gov.in</span>
-              <span className="text-[9px] font-mono text-[#555555]">pass: password123</span>
-            </button>
-          </div>
-        </div>
-
         {/* Credentials Form */}
         <form onSubmit={handleLoginSubmit} className="space-y-4 text-[13px]">
           <div>

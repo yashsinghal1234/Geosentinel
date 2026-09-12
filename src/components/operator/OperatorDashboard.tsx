@@ -19,8 +19,6 @@ import {
   Zap, 
   Check, 
   Menu,
-  Volume2,
-  VolumeX,
   LogOut,
   Search,
   CheckCircle2,
@@ -48,7 +46,6 @@ export const OperatorDashboard: React.FC = () => {
     setSelectedMine,
     setSelectedSector,
     triggerManualAlert,
-    triggerEdgeSiren,
     audioMuted,
     toggleAudioMuted,
     logout,
@@ -181,32 +178,6 @@ export const OperatorDashboard: React.FC = () => {
                 GROWTH &amp; SAFETY TOOLS
               </div>
             )}
-
-            {/* Risk Assessment */}
-            <button
-              onClick={() => setActiveNav('risk')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-[12px] text-[13px] font-medium transition-all cursor-pointer ${
-                activeNav === 'risk'
-                  ? 'bg-[#121418] text-white border border-[#2a2e36] shadow-sm'
-                  : 'text-[#828894] hover:text-white hover:bg-[#0c0d10]'
-              }`}
-            >
-              <AlertTriangle size={16} className={activeNav === 'risk' ? 'text-white' : 'text-[#828894]'} />
-              {isSidebarOpen && <span>Risk &amp; Subsidence Math</span>}
-            </button>
-
-            {/* AI Copilot */}
-            <button
-              onClick={() => setActiveNav('copilot')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-[12px] text-[13px] font-medium transition-all cursor-pointer ${
-                activeNav === 'copilot'
-                  ? 'bg-[#121418] text-white border border-[#2a2e36] shadow-sm'
-                  : 'text-[#828894] hover:text-white hover:bg-[#0c0d10]'
-              }`}
-            >
-              <Sparkles size={16} className={activeNav === 'copilot' ? 'text-[#a3e635]' : 'text-[#828894]'} />
-              {isSidebarOpen && <span>AI Geotechnical Copilot</span>}
-            </button>
 
             {/* Citizen Reports */}
             <button
@@ -755,38 +726,6 @@ export const OperatorDashboard: React.FC = () => {
                 <p className="text-xs text-[#888] mt-0.5">Local offline edge compute node and sirens</p>
               </div>
               <GatewayEdgeView />
-            </div>
-          )}
-
-          {/* Sub-view: AI Copilot & Risk Math */}
-          {(activeNav === 'copilot' || activeNav === 'risk') && (
-            <div className="space-y-4 max-w-[1400px] mx-auto">
-              <div>
-                <h2 className="text-xl font-bold text-white">AI Geotechnical Copilot</h2>
-                <p className="text-xs text-[#888] mt-0.5">Automated displacement forecasting and Knothe profile modeling</p>
-              </div>
-
-              <div className="p-6 rounded-[18px] border border-[#181b20] bg-[#0a0c0f] space-y-4">
-                <div className="flex items-center gap-2 text-[#a3e635] font-mono text-xs">
-                  <Sparkles size={16} />
-                  <span>Knothe Influence Function &amp; Infiltration Analysis</span>
-                </div>
-                <p className="text-sm text-[#d1d5db] leading-relaxed">
-                  Based on continuous telemetry from 8 nodes in Sector 2, the current peak rate of subsidence is 
-                  <strong className="text-white"> 0.8 mm/day</strong> with a radius of principal influence <strong className="text-white">R = 85m</strong>. 
-                  Precipitation of <strong className="text-white">4.2 mm/hr</strong> has amplified piezometric shear by a factor of 
-                  <strong className="text-white"> 1.15x</strong>.
-                </p>
-                <div className="pt-2">
-                  <button
-                    onClick={() => triggerEdgeSiren(!gateway.localSirenActive)}
-                    className="px-4 py-2 rounded-lg bg-[#14171d] border border-[#232731] hover:bg-[#1f232b] text-xs font-mono text-white flex items-center gap-2 cursor-pointer"
-                  >
-                    {gateway.localSirenActive ? <VolumeX size={14} className="text-[#ef4444]" /> : <Volume2 size={14} className="text-[#a3e635]" />}
-                    <span>{gateway.localSirenActive ? 'Silence Edge Siren' : 'Trigger Safety Test Audio'}</span>
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
