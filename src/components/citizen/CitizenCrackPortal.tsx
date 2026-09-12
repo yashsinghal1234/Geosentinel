@@ -1,20 +1,24 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useGeoSentinel } from '../../context/GeoSentinelContext';
-import type { CitizenCrackReport } from '../../types';
 import { 
   Camera, 
   CheckCircle2, 
   MapPin, 
-  Search, 
   Upload, 
-  X, 
   Activity, 
   Sparkles, 
   ShieldCheck, 
-  AlertTriangle 
+  ShieldAlert,
+  AlertTriangle,
+  Lock,
+  Radio,
+  Server,
+  FileText,
+  Cpu,
+  Layers
 } from '../icons';
 
-// High-Resolution Built-in Geological Fracture Reference Patterns (Never 404)
+// Built-in Geological Fracture Reference Patterns
 const FISSURE_TEMPLATES = [
   {
     id: 'soil',
@@ -45,13 +49,13 @@ const FISSURE_TEMPLATES = [
 export const CitizenCrackPortal: React.FC = () => {
   const { 
     reports, 
-    submitCrackReport, 
-    reviewCrackReport, 
-    isAuthenticated,
-    setIsLoginModalOpen
+    submitCrackReport
   } = useGeoSentinel();
 
-  // Form states
+  // Documentation Sub-Tab State
+  const [docTab, setDocTab] = useState<'architecture' | 'physics' | 'hardware' | 'api' | 'security' | 'crack-portal' | 'sop'>('architecture');
+
+  // Crack Reporting Form State
   const [reporterName, setReporterName] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [zone, setZone] = useState<string>('Sector 4 (Village Slope)');
@@ -66,23 +70,14 @@ export const CitizenCrackPortal: React.FC = () => {
   const [submittedSuccess, setSubmittedSuccess] = useState<boolean>(false);
   const [submittedReportId, setSubmittedReportId] = useState<string>('');
 
-  // Filter & Search states
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'dismissed'>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-
-  // Review modal state for operator triage
-  const [reviewingReport, setReviewingReport] = useState<CitizenCrackReport | null>(null);
-  const [reviewNotes, setReviewNotes] = useState<string>('Matches ground displacement trend on nearest extensometer. Dispatched field team.');
-  const [imagePreviewModalUrl, setImagePreviewModalUrl] = useState<string | null>(null);
-
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Dynamic severity tag based on width
   const severityTag = useMemo(() => {
-    if (crackWidth >= 30) return { label: 'Critical Evacuation Hazard', color: 'text-[#ef4444] bg-[#ef4444]/15 border-[#ef4444]/40', icon: AlertTriangle };
-    if (crackWidth >= 16) return { label: 'Severe Subsidence Crack', color: 'text-[#fb923c] bg-[#fb923c]/15 border-[#fb923c]/40', icon: AlertTriangle };
-    if (crackWidth >= 6) return { label: 'Moderate Shear Fissure', color: 'text-[#f59e0b] bg-[#f59e0b]/15 border-[#f59e0b]/40', icon: Activity };
-    return { label: 'Minor Surface Tension', color: 'text-[#38bdf8] bg-[#38bdf8]/15 border-[#38bdf8]/40', icon: Activity };
+    if (crackWidth >= 30) return { label: 'Critical Evacuation Hazard (>30mm)', color: 'text-[#ef4444] bg-[#ef4444]/15 border-[#ef4444]/40', icon: AlertTriangle };
+    if (crackWidth >= 16) return { label: 'Severe Subsidence Crack (16-30mm)', color: 'text-[#fb923c] bg-[#fb923c]/15 border-[#fb923c]/40', icon: AlertTriangle };
+    if (crackWidth >= 6) return { label: 'Moderate Shear Fissure (6-15mm)', color: 'text-[#f59e0b] bg-[#f59e0b]/15 border-[#f59e0b]/40', icon: Activity };
+    return { label: 'Minor Surface Tension (1-5mm)', color: 'text-[#38bdf8] bg-[#38bdf8]/15 border-[#38bdf8]/40', icon: Activity };
   }, [crackWidth]);
 
   // Handle GPS Auto-detection
@@ -95,7 +90,6 @@ export const CitizenCrackPortal: React.FC = () => {
           setIsGpsAcquired(true);
         },
         () => {
-          // Fallback with small realistic jitter
           setLat(23.7480 + (Math.random() * 0.004 - 0.002));
           setLng(86.4210 + (Math.random() * 0.004 - 0.002));
           setIsGpsAcquired(true);
@@ -125,7 +119,6 @@ export const CitizenCrackPortal: React.FC = () => {
     setIsSubmitting(true);
 
     const activePhoto = customPhotoUrl || FISSURE_TEMPLATES[selectedTemplateIndex].url;
-
     const generatedId = `CR-${Math.floor(804 + Math.random() * 100)}`;
     setSubmittedReportId(generatedId);
 
@@ -153,553 +146,152 @@ export const CitizenCrackPortal: React.FC = () => {
     }, 5000);
   };
 
-  const handleApprove = () => {
-    if (!reviewingReport) return;
-    reviewCrackReport(reviewingReport.id, true, reviewNotes);
-    setReviewingReport(null);
-  };
-
-  const handleDismiss = () => {
-    if (!reviewingReport) return;
-    reviewCrackReport(reviewingReport.id, false, 'Dismissed: Superficial shrinkage crack without sub-surface shear.');
-    setReviewingReport(null);
-  };
-
-  // Filtered reports list
-  const filteredReports = useMemo(() => {
-    let list = reports;
-    if (statusFilter === 'pending') {
-      list = list.filter(r => r.status === 'Pending Review');
-    } else if (statusFilter === 'approved') {
-      list = list.filter(r => r.status === 'Corroborated & Approved');
-    } else if (statusFilter === 'dismissed') {
-      list = list.filter(r => r.status === 'Dismissed (Non-critical)');
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(r => 
-        r.id.toLowerCase().includes(q) ||
-        r.reporterName.toLowerCase().includes(q) ||
-        r.zone.toLowerCase().includes(q) ||
-        r.description.toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [reports, statusFilter, searchQuery]);
-
-  // Aggregate Metrics
-  const totalCount = reports.length;
-  const approvedCount = reports.filter(r => r.status === 'Corroborated & Approved').length;
-  const pendingCount = reports.filter(r => r.status === 'Pending Review').length;
-  const maxAperture = Math.max(...reports.map(r => r.crackWidthEstimateMm), 0);
+  const navTabs = [
+    { id: 'architecture', label: 'Architecture & Stack', icon: Layers, count: '6 Layers' },
+    { id: 'physics', label: 'Knothe Physics Model', icon: Sparkles, count: 'CIMFR' },
+    { id: 'hardware', label: 'LoRa Mesh & Hardware', icon: Cpu, count: 'SX1262' },
+    { id: 'api', label: 'REST & WebSocket API', icon: FileText, count: '12 Endpoints' },
+    { id: 'security', label: 'Security & Hashing', icon: Lock, count: 'bcrypt + HS256' },
+    { id: 'crack-portal', label: 'Crack Reporting & Logs', icon: Camera, count: `${reports.length} Logs` },
+    { id: 'sop', label: 'DGMS Disaster SOPs', icon: ShieldAlert, count: 'Stage 1-5' }
+  ] as const;
 
   return (
-    <div className="mx-auto max-w-[1360px] px-4 py-8 sm:px-6 lg:px-8 space-y-7 animate-fadeIn font-sans select-none text-white pb-16">
+    <div className="mx-auto max-w-[1380px] px-4 py-8 sm:px-6 lg:px-8 space-y-8 animate-fadeIn font-sans select-none text-white pb-24">
       
-      {/* 1. TOP HEADER BANNER */}
-      <div className="border-b border-white/[0.08] pb-6">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="p-2 rounded-xl bg-[#a855f7]/15 border border-[#a855f7]/30 text-[#d8b4fe]">
-            <Camera size={20} />
+      {/* 1. TOP HERO & DOCUMENTATION HEADER */}
+      <div className="border-b border-[#222222] pb-6 space-y-3">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <span className="text-[#a3e635] font-black text-2xl font-mono tracking-tighter">///</span>
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white font-sans">
+              System Documentation &amp; Technical Manual
+            </h1>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white font-sans">
-            Citizen Ground Crack Reporting Portal
-          </h1>
-          <span className="text-[11px] font-mono text-[#22c55e] bg-[#22c55e]/15 border border-[#22c55e]/30 px-3 py-0.5 rounded-full font-semibold">
-            PUBLIC ACCESS • ZERO LOGIN REQUIRED
-          </span>
+          <div className="flex items-center gap-2 font-mono text-xs">
+            <span className="px-3 py-1 rounded-full bg-[#111111] border border-[#262626] text-[#a3e635] font-bold">
+              SIH 2026 · PS-25
+            </span>
+            <span className="px-3 py-1 rounded-full bg-[#111111] border border-[#262626] text-[#38bdf8] font-bold">
+              MINISTRY OF COAL
+            </span>
+          </div>
         </div>
-        <p className="text-xs sm:text-sm text-white/50 mt-1.5 max-w-3xl">
-          Upload geotagged observations of ground fissures, shear cracks, and subsidence. Automatic AI correlation with deployed IoT extensometer arrays and real-time operator dispatch.
+        <p className="text-xs sm:text-sm text-[#828894] max-w-4xl leading-relaxed">
+          Comprehensive engineering specifications, Knothe subsidence equations, LoRa multi-hop mesh protocols, DGMS safety thresholds, cryptographic hashing standards, and citizen telemetry triage.
         </p>
       </div>
 
-      {/* 2. TOP 4 SUMMARY METRIC CARDS */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="p-4 rounded-2xl bg-[#0b0d12] border border-white/[0.08] flex flex-col justify-between">
-          <span className="text-xs text-white/50 font-medium">Total Citizen Reports</span>
-          <div className="text-2xl sm:text-3xl font-bold text-white mt-2 font-mono">{totalCount}</div>
-          <span className="text-[11px] text-white/40 mt-1">Community submitted</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[#0b0d12] border border-white/[0.08] flex flex-col justify-between">
-          <span className="text-xs text-white/50 font-medium">Corroborated Hazards</span>
-          <div className="text-2xl sm:text-3xl font-bold text-[#22c55e] mt-2 font-mono flex items-center gap-2">
-            <span>{approvedCount}</span>
-            <ShieldCheck size={18} className="text-[#22c55e]" />
-          </div>
-          <span className="text-[11px] text-[#22c55e] mt-1">Verified with sensor nodes</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[#0b0d12] border border-white/[0.08] flex flex-col justify-between">
-          <span className="text-xs text-white/50 font-medium">Pending Triage</span>
-          <div className="text-2xl sm:text-3xl font-bold text-[#f59e0b] mt-2 font-mono flex items-center gap-2">
-            <span>{pendingCount}</span>
-            {pendingCount > 0 && <span className="w-2 h-2 rounded-full bg-[#f59e0b] animate-ping" />}
-          </div>
-          <span className="text-[11px] text-[#f59e0b] mt-1">Awaiting review</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[#0b0d12] border border-white/[0.08] flex flex-col justify-between">
-          <span className="text-xs text-white/50 font-medium">Peak Fissure Aperture</span>
-          <div className="text-2xl sm:text-3xl font-bold text-[#fb923c] mt-2 font-mono">
-            {maxAperture} <span className="text-xs font-normal text-white/40 font-sans">mm</span>
-          </div>
-          <span className="text-[11px] text-[#fb923c] mt-1">Sector 3 Highwall Gallery</span>
-        </div>
+      {/* 2. HORIZONTAL NAVIGATION TABS BAR */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-[#1c1c1c]">
+        {navTabs.map((tab) => {
+          const IconCmp = tab.icon;
+          const isActive = docTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setDocTab(tab.id as any)}
+              className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-[#141414] border-[#444444] text-white shadow-sm'
+                  : 'bg-[#080808] border-[#1c1c1c] text-[#828894] hover:text-white hover:bg-[#111111] hover:border-[#333333]'
+              }`}
+            >
+              <IconCmp size={14} className={isActive ? 'text-[#a3e635]' : 'text-[#828894]'} />
+              <span>{tab.label}</span>
+              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                isActive ? 'bg-[#222222] text-[#a3e635]' : 'bg-[#111111] text-[#666666]'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* 3. MAIN 2-COLUMN GRID (SUBMISSION FORM + COMMUNITY FEED) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
-        
-        {/* LEFT COLUMN: SUBMISSION FORM (5 cols) */}
-        <div className="lg:col-span-5 p-6 rounded-2xl bg-[#0b0d12] border border-white/[0.08] shadow-2xl space-y-5">
-          <div className="border-b border-white/[0.08] pb-4">
-            <h3 className="text-base font-semibold text-white tracking-tight flex items-center gap-2">
-              <Camera size={16} className="text-[#a3e635]" />
-              Report New Surface Fissure
-            </h3>
-            <p className="text-xs text-white/50 mt-0.5">
-              Direct submission to Geological Survey Review Queue &amp; Command Center
-            </p>
-          </div>
-
-          {/* Submission Success Banner */}
-          {submittedSuccess && (
-            <div className="rounded-xl border border-[#22c55e]/40 bg-[#22c55e]/15 p-3.5 text-xs text-[#86efac] flex items-center gap-2.5 animate-fadeIn">
-              <CheckCircle2 size={18} className="text-[#22c55e] shrink-0" />
+      {/* ========================================================================= */}
+      {/* SECTION 1: ARCHITECTURE & SYSTEM DESIGN                                   */}
+      {/* ========================================================================= */}
+      {docTab === 'architecture' && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="p-6 rounded-2xl border border-[#222222] bg-[#080808] space-y-6">
+            <div className="border-b border-[#1c1c1c] pb-4 flex items-center justify-between">
               <div>
-                <strong>Report {submittedReportId} Uploaded Successfully!</strong>
-                <p className="text-[11px] text-white/80 mt-0.5">
-                  GPS coordinates pinned on Operator GIS Map. Nearest node AI correlation active.
-                </p>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Layers size={18} className="text-[#a3e635]" />
+                  End-to-End System Architecture
+                </h2>
+                <p className="text-xs text-[#828894] mt-1">Multi-tier edge-to-cloud resilience for zero-infrastructure hazardous mining environments.</p>
               </div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmitReport} className="space-y-4 text-xs">
-            {/* Resident Name */}
-            <div>
-              <label className="block text-white/60 font-medium mb-1">Your Name / Resident (Optional)</label>
-              <input
-                type="text"
-                placeholder="e.g. Rameshwar Soren (or leave blank for Anonymous)"
-                value={reporterName}
-                onChange={(e) => setReporterName(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-[#06080b] px-3.5 py-2.5 text-white placeholder-white/30 text-xs focus:outline-none focus:border-[#a3e635]/60 transition-all"
-              />
-            </div>
-
-            {/* 2-Col Phone & Sector */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-white/60 font-medium mb-1">Contact Phone (Optional)</label>
-                <input
-                  type="tel"
-                  placeholder="+91 94311 00000"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-[#06080b] px-3.5 py-2.5 text-white placeholder-white/30 text-xs focus:outline-none focus:border-[#a3e635]/60 transition-all font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-white/60 font-medium mb-1">Mining Sector / Village</label>
-                <select
-                  value={zone}
-                  onChange={(e) => setZone(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-[#06080b] px-3.5 py-2.5 text-white text-xs focus:outline-none focus:border-[#a3e635]/60 transition-all cursor-pointer"
-                >
-                  <option value="Sector 4 (Village Slope)">Sector 4 (Village Slope)</option>
-                  <option value="Sector 3 (Abandoned Gallery)">Sector 3 (Abandoned Gallery)</option>
-                  <option value="Sector 2 (Riverbank Overburden)">Sector 2 (Riverbank Overburden)</option>
-                  <option value="Sector 1 (Open Cast Pit)">Sector 1 (Open Cast Pit)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* GPS Location Row */}
-            <div className="p-3.5 rounded-xl bg-[#07090e] border border-white/[0.06] flex items-center justify-between gap-3">
-              <div>
-                <span className="text-[11px] text-white/50 block">Geotag Coordinates</span>
-                <span className="text-xs font-mono font-bold text-white mt-0.5 block">
-                  {lat.toFixed(4)}°N, {lng.toFixed(4)}°E
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={handleAutoDetectGPS}
-                className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/15 text-[11px] font-medium text-[#a3e635] transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <MapPin size={12} />
-                <span>{isGpsAcquired ? 'GPS Acquired' : 'Auto-Detect GPS'}</span>
-              </button>
-            </div>
-
-            {/* Crack Aperture Width Slider & Gauge */}
-            <div className="p-4 rounded-xl bg-[#07090e] border border-white/[0.06] space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-white/60 font-medium">Estimated Crack Aperture</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold font-mono text-white">{crackWidth} mm</span>
-                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${severityTag.color}`}>
-                    {severityTag.label}
-                  </span>
-                </div>
-              </div>
-
-              <input
-                type="range"
-                min="1"
-                max="50"
-                step="1"
-                value={crackWidth}
-                onChange={(e) => setCrackWidth(Number(e.target.value))}
-                className="w-full accent-[#fb923c] cursor-pointer"
-              />
-
-              <div className="flex justify-between text-[10px] text-white/40 font-mono">
-                <span>1 mm (Hairline)</span>
-                <span>5 mm (DGMS Alert)</span>
-                <span>15 mm (Severe)</span>
-                <span>50 mm (Critical)</span>
-              </div>
-            </div>
-
-            {/* Photo Selection / Real Upload */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-white/60 font-medium">Select or Upload Photo</label>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-[11px] text-[#38bdf8] hover:underline flex items-center gap-1 cursor-pointer font-medium"
-                >
-                  <Upload size={12} />
-                  <span>Upload Local Photo</span>
-                </button>
-              </div>
-
-              <input 
-                ref={fileInputRef} 
-                type="file" 
-                accept="image/*" 
-                className="hidden" 
-                onChange={handleFileUpload} 
-              />
-
-              {/* Custom Uploaded Preview */}
-              {customPhotoUrl ? (
-                <div className="relative rounded-xl overflow-hidden border border-[#22c55e]/60 bg-black">
-                  <img src={customPhotoUrl} alt="Uploaded Crack" className="h-32 w-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setCustomPhotoUrl(null)}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black text-white text-xs cursor-pointer"
-                  >
-                    <X size={14} />
-                  </button>
-                  <div className="p-1.5 text-[10px] text-center bg-black/80 text-[#86efac] font-medium">
-                    ✓ Custom Photo Selected
-                  </div>
-                </div>
-              ) : (
-                /* Built-in Geological Fracture Templates */
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {FISSURE_TEMPLATES.map((tmpl, idx) => (
-                    <div
-                      key={tmpl.id}
-                      onClick={() => setSelectedTemplateIndex(idx)}
-                      className={`cursor-pointer rounded-xl border overflow-hidden transition-all flex flex-col justify-between ${
-                        selectedTemplateIndex === idx 
-                          ? 'border-[#a3e635] ring-2 ring-[#a3e635]/30 bg-white/[0.04]' 
-                          : 'border-white/10 opacity-70 hover:opacity-100 bg-black/40'
-                      }`}
-                    >
-                      <img src={tmpl.url} alt={tmpl.title} className="h-16 w-full object-cover" />
-                      <div className="p-1.5 text-[10px] text-center bg-[#090b10] text-white/80 truncate font-medium">
-                        {tmpl.title}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Description Textarea */}
-            <div>
-              <label className="block text-white/60 font-medium mb-1">Observation Description</label>
-              <textarea
-                rows={3}
-                placeholder="Describe crack length, expansion rate, or location (e.g. Near village school boundary wall, opened up after last night's rainfall)..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-[#06080b] px-3.5 py-2.5 text-white placeholder-white/30 text-xs focus:outline-none focus:border-[#a3e635]/60 transition-all"
-              />
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 rounded-xl bg-white hover:bg-white/90 text-black font-semibold text-xs transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg disabled:opacity-60"
-            >
-              <CheckCircle2 size={16} />
-              <span>{isSubmitting ? 'Uploading to Geological Queue...' : 'Submit Geotagged Crack Report'}</span>
-            </button>
-          </form>
-        </div>
-
-        {/* RIGHT COLUMN: LIVE COMMUNITY FEED & OPERATOR TRIAGE (7 cols) */}
-        <div className="lg:col-span-7 space-y-5">
-          {/* Header & Filter Controls */}
-          <div className="p-5 rounded-2xl bg-[#0b0d12] border border-white/[0.08] shadow-2xl space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-base font-semibold text-white tracking-tight">
-                  Live Ground Fissure Reports Feed
-                </h3>
-                <p className="text-xs text-white/50 mt-0.5">
-                  {isAuthenticated 
-                    ? 'Operator Triage Active: Click any report to corroborate against extensometer displacement.'
-                    : 'Public Community Feed • Real-time geological surveillance stream'}
-                </p>
-              </div>
-
-              <span className="font-mono text-xs text-[#a855f7] bg-[#a855f7]/15 border border-[#a855f7]/30 px-3 py-1 rounded-full font-semibold">
-                {filteredReports.length} Reports Shown
+              <span className="text-[11px] font-mono text-[#a3e635] bg-[#a3e635]/10 border border-[#a3e635]/30 px-3 py-1 rounded-full">
+                Fail-Safe Architecture
               </span>
             </div>
 
-            {/* Filter Tabs & Search Row */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/[0.08]">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button
-                  onClick={() => setStatusFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    statusFilter === 'all'
-                      ? 'bg-white text-black font-semibold shadow-sm'
-                      : 'bg-[#111318] border border-white/10 text-white/70 hover:text-white'
-                  }`}
-                >
-                  All ({reports.length})
-                </button>
-
-                <button
-                  onClick={() => setStatusFilter('pending')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    statusFilter === 'pending'
-                      ? 'bg-[#f59e0b] text-black font-semibold shadow-sm'
-                      : 'bg-[#111318] border border-white/10 text-white/70 hover:text-white'
-                  }`}
-                >
-                  Pending ({pendingCount})
-                </button>
-
-                <button
-                  onClick={() => setStatusFilter('approved')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    statusFilter === 'approved'
-                      ? 'bg-[#22c55e] text-black font-semibold shadow-sm'
-                      : 'bg-[#111318] border border-white/10 text-white/70 hover:text-white'
-                  }`}
-                >
-                  Corroborated ({approvedCount})
-                </button>
+            {/* Architecture Flow Diagram */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+              <div className="p-4 rounded-xl border border-[#222222] bg-[#000000] space-y-2">
+                <div className="flex items-center gap-2 text-[#a3e635] font-mono font-bold text-xs uppercase">
+                  <Cpu size={14} /> 1. Field Nodes (IoT)
+                </div>
+                <p className="text-[#a1a1aa] leading-relaxed text-[11px]">
+                  Solar-powered ESP32 nodes equipped with MPU-6050 (3-axis tilt/pitch/roll), piezoelectric vibration sensors, and capacitive soil moisture probes.
+                </p>
+                <div className="text-[10px] font-mono text-[#71717a] pt-2 border-t border-[#1c1c1c]">LoRa 868/915 MHz · 2.5km range</div>
               </div>
 
-              {/* Search Box */}
-              <div className="relative min-w-[200px]">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
-                <input
-                  type="text"
-                  placeholder="Search reports..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#06080b] border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-white/40 outline-none focus:border-white/30 transition-all"
-                />
+              <div className="p-4 rounded-xl border border-[#222222] bg-[#000000] space-y-2">
+                <div className="flex items-center gap-2 text-[#38bdf8] font-mono font-bold text-xs uppercase">
+                  <Radio size={14} /> 2. Edge Gateway
+                </div>
+                <p className="text-[#a1a1aa] leading-relaxed text-[11px]">
+                  SX1302/1303 LoRaWAN concentrator running embedded Node.js/Linux. Manages local packet deduplication, 110dB siren relay, and offline fallback Wi-Fi hotspot.
+                </p>
+                <div className="text-[10px] font-mono text-[#71717a] pt-2 border-t border-[#1c1c1c]">Zero-Internet Fallback · 100% Offline</div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-[#222222] bg-[#000000] space-y-2">
+                <div className="flex items-center gap-2 text-[#f59e0b] font-mono font-bold text-xs uppercase">
+                  <Server size={14} /> 3. Node.js Core API
+                </div>
+                <p className="text-[#a1a1aa] leading-relaxed text-[11px]">
+                  High-throughput Express backend with WebSocket server. Processes sensor streams, computes Knothe displacement profiles, and manages MongoDB Atlas persistence.
+                </p>
+                <div className="text-[10px] font-mono text-[#71717a] pt-2 border-t border-[#1c1c1c]">JWT Auth · bcrypt Hashing · REST + WS</div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-[#222222] bg-[#000000] space-y-2">
+                <div className="flex items-center gap-2 text-[#a78bfa] font-mono font-bold text-xs uppercase">
+                  <Activity size={14} /> 4. Visualization &amp; GIS
+                </div>
+                <p className="text-[#a1a1aa] leading-relaxed text-[11px]">
+                  Hardware-accelerated Canvas 2D/WebGL geospatial heatmap, 3D mesh topology graph, operator mission control terminal, and multi-lingual village safety board.
+                </p>
+                <div className="text-[10px] font-mono text-[#71717a] pt-2 border-t border-[#1c1c1c]">Sub-Second Latency · 5 Languages</div>
               </div>
             </div>
-          </div>
 
-          {/* Reports Feed List */}
-          <div className="space-y-3.5">
-            {filteredReports.map((report) => {
-              const isApproved = report.status === 'Corroborated & Approved';
-              const isDismissed = report.status === 'Dismissed (Non-critical)';
-
-              return (
-                <div
-                  key={report.id}
-                  onClick={() => {
-                    if (isAuthenticated) {
-                      setReviewingReport(report);
-                    } else {
-                      setIsLoginModalOpen(true);
-                    }
-                  }}
-                  className="p-5 rounded-2xl bg-[#0b0d12] border border-white/[0.08] hover:border-white/20 transition-all cursor-pointer space-y-3 shadow-md group"
-                >
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                      {/* Thumbnail with Zoom Click */}
-                      <div 
-                        className="relative h-18 w-20 rounded-xl overflow-hidden border border-white/10 flex-shrink-0 bg-black cursor-zoom-in"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setImagePreviewModalUrl(report.photoUrl);
-                        }}
-                      >
-                        <img
-                          src={report.photoUrl}
-                          alt={report.description}
-                          className="h-full w-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                      </div>
-
-                      {/* Details */}
-                      <div>
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <span className="font-mono font-bold text-white text-sm">{report.id}</span>
-                          <span className="text-xs text-white/40 font-mono">• {report.timestamp}</span>
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-white/5 border border-white/10 text-white/70">
-                            {report.zone}
-                          </span>
-                        </div>
-
-                        <div className="text-xs font-mono font-bold text-[#fb923c] mt-1 flex items-center gap-2">
-                          <span>Est. Aperture: {report.crackWidthEstimateMm} mm</span>
-                          <span className="text-[10px] text-white/40 font-normal">
-                            ({report.severity || (report.crackWidthEstimateMm >= 15 ? 'Severe Subsidence' : 'Moderate Shear')})
-                          </span>
-                        </div>
-
-                        <p className="text-xs text-white/80 mt-1 line-clamp-2 italic">
-                          "{report.description}"
-                        </p>
-
-                        <div className="text-[11px] text-white/40 mt-1.5">
-                          Reported by: <span className="text-white/70">{report.reporterName}</span> ({report.phone})
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Status Badge & Triage Link */}
-                    <div className="flex flex-col sm:items-end gap-2 flex-shrink-0 self-end sm:self-center">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${
-                        isApproved
-                          ? 'bg-[#22c55e]/15 text-[#4ade80] border-[#22c55e]/40'
-                          : isDismissed
-                          ? 'bg-[#ef4444]/15 text-[#f87171] border-[#ef4444]/40'
-                          : 'bg-[#f59e0b]/15 text-[#fbbf24] border-[#f59e0b]/40'
-                      }`}>
-                        {report.status}
-                      </span>
-
-                      <span className="text-xs text-[#d8b4fe] group-hover:underline flex items-center gap-1 font-medium">
-                        {isAuthenticated ? 'Triage Review →' : 'Operator Triage →'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* AI Corroboration & Geologist Review Note Strip */}
-                  {(report.reviewNotes || isApproved) && (
-                    <div className="pt-3 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
-                      <div className="flex items-center gap-1.5 text-[#86efac]">
-                        <Sparkles size={13} className="text-[#a3e635]" />
-                        <span>AI Corroborated: {report.reviewNotes || 'Matches extensometer shear trend on nearest IoT pod.'}</span>
-                      </div>
-                      {report.reviewedBy && (
-                        <span className="text-white/40 text-[10px]">
-                          Reviewed by: {report.reviewedBy}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. OPERATOR TRIAGE MODAL                                                 */}
-      {/* ========================================================================= */}
-      {reviewingReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn">
-          <div className="relative w-full max-w-xl rounded-2xl border border-white/15 bg-[#090b10] p-6 shadow-2xl space-y-5 text-white">
-            <div className="flex items-start justify-between border-b border-white/10 pb-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold font-mono text-white">
-                    Corroborate Report: {reviewingReport.id}
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#a855f7]/20 text-[#d8b4fe] border border-[#a855f7]/30">
-                    {reviewingReport.zone}
-                  </span>
-                </div>
-                <p className="text-xs text-white/50 mt-0.5">
-                  DGMS Geomechanical Triage &amp; Risk Escalation Protocol
+            {/* Core Architectural Pillars */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <div className="p-4 rounded-xl border border-[#1c1c1c] bg-[#0c0c0c] space-y-1.5">
+                <div className="font-bold text-white text-xs">Autonomous Mesh Routing</div>
+                <p className="text-[11px] text-[#828894] leading-relaxed">
+                  Dynamic routing protocol discovers shortest multi-hop paths to circumvent terrain obstructions, mine overburden ridges, and deep pit geometry.
                 </p>
               </div>
-              <button
-                onClick={() => setReviewingReport(null)}
-                className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/15 text-white/70 hover:text-white transition-all cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
 
-            <div className="space-y-4 text-xs">
-              {/* Photo Display */}
-              <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black h-48">
-                <img
-                  src={reviewingReport.photoUrl}
-                  alt={reviewingReport.description}
-                  className="h-full w-full object-cover"
-                />
+              <div className="p-4 rounded-xl border border-[#1c1c1c] bg-[#0c0c0c] space-y-1.5">
+                <div className="font-bold text-white text-xs">Acoustic Disaster Siren Relays</div>
+                <p className="text-[11px] text-[#828894] leading-relaxed">
+                  Physical 110 dB sirens hardwired to gateway GPIOs fire autonomously if local tilt/acceleration thresholds breach Stage 5 failure limits.
+                </p>
               </div>
 
-              {/* Statement & Data */}
-              <div className="p-3.5 rounded-xl bg-black/50 border border-white/[0.08] space-y-1.5 font-mono">
-                <div className="text-white/50 text-[11px]">Reporter Statement:</div>
-                <div className="text-white italic">"{reviewingReport.description}"</div>
-                <div className="flex justify-between text-[#fb923c] pt-1">
-                  <span>Estimated Aperture: {reviewingReport.crackWidthEstimateMm} mm</span>
-                  <span>Geotag: {reviewingReport.lat.toFixed(4)}°N, {reviewingReport.lng.toFixed(4)}°E</span>
-                </div>
-              </div>
-
-              {/* Reviewer Notes Input */}
-              <div>
-                <label className="block text-white/60 font-medium mb-1.5">
-                  Geologist Review Notes &amp; Escalation Directive
-                </label>
-                <textarea
-                  rows={2}
-                  value={reviewNotes}
-                  onChange={(e) => setReviewNotes(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-[#06080b] px-3.5 py-2.5 text-white text-xs focus:outline-none focus:border-[#a3e635]/60 transition-all font-sans"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  onClick={handleApprove}
-                  className="flex-1 py-3 rounded-xl bg-[#22c55e] text-black font-semibold text-xs hover:bg-[#16a34a] transition-all cursor-pointer shadow-lg flex items-center justify-center gap-1.5"
-                >
-                  <ShieldCheck size={15} />
-                  <span>✓ Corroborate &amp; Escalate Warning</span>
-                </button>
-                <button
-                  onClick={handleDismiss}
-                  className="px-5 py-3 rounded-xl border border-[#ef4444]/40 text-[#ef4444] hover:bg-[#ef4444]/10 font-semibold text-xs transition-all cursor-pointer"
-                >
-                  Dismiss (Superficial)
-                </button>
+              <div className="p-4 rounded-xl border border-[#1c1c1c] bg-[#0c0c0c] space-y-1.5">
+                <div className="font-bold text-white text-xs">Spatial Corroboration Engine</div>
+                <p className="text-[11px] text-[#828894] leading-relaxed">
+                  Eliminates false positives from accidental bumps or fauna disturbance by requiring 2 or more adjacent nodes to confirm strata shear displacement.
+                </p>
               </div>
             </div>
           </div>
@@ -707,21 +299,527 @@ export const CitizenCrackPortal: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 5. IMAGE PREVIEW ZOOM MODAL                                               */}
+      {/* SECTION 2: KNOTHE SUBSIDENCE PHYSICS MODEL                                */}
       {/* ========================================================================= */}
-      {imagePreviewModalUrl && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fadeIn cursor-zoom-out"
-          onClick={() => setImagePreviewModalUrl(null)}
-        >
-          <div className="relative max-w-3xl max-h-[80vh] rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-black">
-            <img src={imagePreviewModalUrl} alt="Enlarged fissure" className="w-full h-full object-contain" />
-            <button
-              onClick={() => setImagePreviewModalUrl(null)}
-              className="absolute top-3 right-3 p-2 rounded-full bg-black/70 text-white hover:bg-black transition-all cursor-pointer"
-            >
-              <X size={18} />
-            </button>
+      {docTab === 'physics' && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="p-6 rounded-2xl border border-[#222222] bg-[#080808] space-y-6">
+            <div className="border-b border-[#1c1c1c] pb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Sparkles size={18} className="text-[#a3e635]" />
+                  Knothe Time-Dependent Influence &amp; CIMFR Geotechnical Model
+                </h2>
+                <p className="text-xs text-[#828894] mt-1">Mathematical formulation governing strata displacement, influence radius, and pore-water shear acceleration.</p>
+              </div>
+              <span className="text-[11px] font-mono text-[#38bdf8] bg-[#38bdf8]/10 border border-[#38bdf8]/30 px-3 py-1 rounded-full">
+                Physics Engine
+              </span>
+            </div>
+
+            {/* Formula Block 1 */}
+            <div className="p-5 rounded-xl border border-[#262626] bg-[#000000] space-y-3">
+              <div className="text-xs font-mono font-bold text-[#a3e635] uppercase">1. Gaussian Subsidence Distribution Profile</div>
+              <div className="p-3.5 rounded-lg bg-[#0a0a0a] border border-[#1c1c1c] font-mono text-sm sm:text-base text-white text-center">
+                S(x) = S_max · exp( -π · (x² / R²) )
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-2">
+                <div className="p-2.5 rounded-lg bg-[#111111] border border-[#222222]">
+                  <span className="font-mono text-[#a3e635] font-bold">S(x)</span>: Subsidence at distance <code className="text-white">x</code> from mine boundary (mm).
+                </div>
+                <div className="p-2.5 rounded-lg bg-[#111111] border border-[#222222]">
+                  <span className="font-mono text-[#38bdf8] font-bold">S_max</span>: Maximum possible trough subsidence = <code className="text-white">m · a · q</code>.
+                </div>
+                <div className="p-2.5 rounded-lg bg-[#111111] border border-[#222222]">
+                  <span className="font-mono text-[#f59e0b] font-bold">R</span>: Radius of principal influence = <code className="text-white">H / tan(β)</code>.
+                </div>
+              </div>
+            </div>
+
+            {/* Formula Block 2: Pore-Water Multiplier */}
+            <div className="p-5 rounded-xl border border-[#262626] bg-[#000000] space-y-3">
+              <div className="text-xs font-mono font-bold text-[#38bdf8] uppercase">2. Monsoon Piezometric Pore-Water Factor (Ψ)</div>
+              <div className="p-3.5 rounded-lg bg-[#0a0a0a] border border-[#1c1c1c] font-mono text-sm sm:text-base text-white text-center">
+                Ψ = 1.0 + 0.5 · (Rainfall_Rate / 50) · (VWC% / 100)
+              </div>
+              <p className="text-xs text-[#a1a1aa] leading-relaxed">
+                During heavy monsoon downpours, interstitial pore-water pressure reduces the effective normal stress between strata layers. GeoSentinel dynamically multiplies the calculated shear rate by factor <strong className="text-white">Ψ</strong>, advancing early warning lead times by up to <strong>4.2 hours</strong> before visual ground rupture.
+              </p>
+            </div>
+
+            {/* Formula Block 3: Dynamic Tilt Vector & Rate of Change */}
+            <div className="p-5 rounded-xl border border-[#262626] bg-[#000000] space-y-3">
+              <div className="text-xs font-mono font-bold text-[#f59e0b] uppercase">3. Multi-Axis Dynamic Tilt Vector Magnitude</div>
+              <div className="p-3.5 rounded-lg bg-[#0a0a0a] border border-[#1c1c1c] font-mono text-sm sm:text-base text-white text-center">
+                θ_total = √( (ΔPitch)² + (ΔRoll)² ) &nbsp;|&nbsp; Rate = d(θ_total) / dt (deg/hr)
+              </div>
+              <div className="text-xs text-[#828894] space-y-1">
+                <div>• <strong>Threshold Advisory:</strong> Rate &gt; 0.25°/hr for 3 consecutive telemetry ticks</div>
+                <div>• <strong>Threshold Critical:</strong> Rate &gt; 1.20°/hr OR total angular displacement &gt; 4.5°</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 3: HARDWARE SPECIFICATIONS & MESH TOPOLOGY                        */}
+      {/* ========================================================================= */}
+      {docTab === 'hardware' && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="p-6 rounded-2xl border border-[#222222] bg-[#080808] space-y-6">
+            <div className="border-b border-[#1c1c1c] pb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Cpu size={18} className="text-[#a3e635]" />
+                  Hardware BOM &amp; Edge Hardware Specifications
+                </h2>
+                <p className="text-xs text-[#828894] mt-1">Component list, power budget, and radio link budget for mine surface deployment.</p>
+              </div>
+              <span className="text-[11px] font-mono text-[#22c55e] bg-[#22c55e]/10 border border-[#22c55e]/30 px-3 py-1 rounded-full">
+                Hardware Specs
+              </span>
+            </div>
+
+            {/* Bill of Materials Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border border-[#1c1c1c] rounded-xl overflow-hidden">
+                <thead className="bg-[#111111] text-[#a1a1aa] font-mono border-b border-[#222222]">
+                  <tr>
+                    <th className="p-3">Subsystem</th>
+                    <th className="p-3">Component / IC</th>
+                    <th className="p-3">Key Specification</th>
+                    <th className="p-3">Power Consumption</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1c1c1c] bg-[#000000] text-[#e4e4e7]">
+                  <tr>
+                    <td className="p-3 font-semibold text-white">Microcontroller</td>
+                    <td className="p-3 font-mono text-[#a3e635]">ESP32-S3-WROOM-1</td>
+                    <td className="p-3">Dual-core Xtensa 32-bit LX7 @ 240MHz, 8MB PSRAM</td>
+                    <td className="p-3 font-mono">15µA Deep Sleep / 80mA Active</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-semibold text-white">LoRa Radio Transceiver</td>
+                    <td className="p-3 font-mono text-[#38bdf8]">Semtech SX1262</td>
+                    <td className="p-3">868/915 MHz, +22 dBm Tx power, -148 dBm sensitivity</td>
+                    <td className="p-3 font-mono">4.2mA Rx / 118mA Tx @ +22dBm</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-semibold text-white">Inclinometer / IMU</td>
+                    <td className="p-3 font-mono text-[#f59e0b]">MPU-6050 + Kalman Filter</td>
+                    <td className="p-3">3-Axis Gyro (±250°/s) + 3-Axis Accel (±2g), 0.05° resolution</td>
+                    <td className="p-3 font-mono">3.8mA Active / 5µA Sleep</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-semibold text-white">Soil Moisture Probe</td>
+                    <td className="p-3 font-mono text-[#a78bfa]">Capacitive VWC v1.2</td>
+                    <td className="p-3">Corrosion-resistant capacitive dielectric sensor (0-100%)</td>
+                    <td className="p-3 font-mono">5mA during pulse read</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-semibold text-white">Solar Power &amp; Storage</td>
+                    <td className="p-3 font-mono text-[#22c55e]">CN3791 MPPT + 18650 LiFePO4</td>
+                    <td className="p-3">6V 3W Monocrystalline Panel + 3.2V 3200mAh LiFePO4 Cell</td>
+                    <td className="p-3 font-mono">Autonomy: 21 days zero sunlight</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-semibold text-white">Edge Gateway Hub</td>
+                    <td className="p-3 font-mono text-[#f43f5e]">Raspberry Pi CM4 + SX1302</td>
+                    <td className="p-3">8-Channel LoRaWAN Concentrator + SIM800L GSM + 110dB Relay</td>
+                    <td className="p-3 font-mono">5V 2.5A (12V 50W Solar Kit)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 4: REST API & WEBSOCKET SPECIFICATION                             */}
+      {/* ========================================================================= */}
+      {docTab === 'api' && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="p-6 rounded-2xl border border-[#222222] bg-[#080808] space-y-6">
+            <div className="border-b border-[#1c1c1c] pb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <FileText size={18} className="text-[#a3e635]" />
+                  REST API &amp; Real-Time WebSocket Protocols
+                </h2>
+                <p className="text-xs text-[#828894] mt-1">Interactive schema reference for backend endpoints and telemetry push streams.</p>
+              </div>
+              <span className="text-[11px] font-mono text-[#a3e635] bg-[#a3e635]/10 border border-[#a3e635]/30 px-3 py-1 rounded-full">
+                API v1.0.0
+              </span>
+            </div>
+
+            {/* Endpoints Grid */}
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl border border-[#222222] bg-[#000000] space-y-2">
+                <div className="flex items-center gap-2 font-mono text-xs">
+                  <span className="px-2 py-0.5 rounded bg-[#22c55e]/20 text-[#22c55e] font-bold">GET</span>
+                  <span className="text-white font-bold">/api/nodes</span>
+                  <span className="text-[#71717a] ml-auto">Public / Operator</span>
+                </div>
+                <p className="text-xs text-[#828894]">Returns all active surface mesh nodes, latest tilt, vibration, battery, and current status.</p>
+                <div className="p-3 rounded-lg bg-[#0a0a0a] border border-[#1c1c1c] font-mono text-[11px] text-[#86efac]">
+                  &#123; "status": "ok", "count": 6, "data": [ &#123; "id": "SN-01", "tiltDegrees": 0.42, "batteryVolts": 4.15, "status": "Normal" &#125; ] &#125;
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-[#222222] bg-[#000000] space-y-2">
+                <div className="flex items-center gap-2 font-mono text-xs">
+                  <span className="px-2 py-0.5 rounded bg-[#38bdf8]/20 text-[#38bdf8] font-bold">POST</span>
+                  <span className="text-white font-bold">/api/ingest/packet</span>
+                  <span className="text-[#f59e0b] ml-auto">Gateway Auth Required</span>
+                </div>
+                <p className="text-xs text-[#828894]">LoRa Gateway bridge pushing raw node telemetry packet to the server.</p>
+                <div className="p-3 rounded-lg bg-[#0a0a0a] border border-[#1c1c1c] font-mono text-[11px] text-[#93c5fd]">
+                  &#123; "nodeId": "SN-04", "pitch": 3.82, "roll": 1.15, "vibrationG": 0.12, "soilMoistureVwc": 48.5, "rssi": -78 &#125;
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-[#222222] bg-[#000000] space-y-2">
+                <div className="flex items-center gap-2 font-mono text-xs">
+                  <span className="px-2 py-0.5 rounded bg-[#38bdf8]/20 text-[#38bdf8] font-bold">POST</span>
+                  <span className="text-white font-bold">/api/reports</span>
+                  <span className="text-[#a3e635] ml-auto">Public (Zero Login)</span>
+                </div>
+                <p className="text-xs text-[#828894]">Submits citizen crowdsourced crack log with photo URL and aperture measurement.</p>
+                <div className="p-3 rounded-lg bg-[#0a0a0a] border border-[#1c1c1c] font-mono text-[11px] text-[#fde047]">
+                  &#123; "reporterName": "Ramesh Soren", "zone": "Sector 4", "crackWidthEstimateMm": 18, "lat": 23.7482, "lng": 86.4215 &#125;
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-[#222222] bg-[#000000] space-y-2">
+                <div className="flex items-center gap-2 font-mono text-xs">
+                  <span className="px-2 py-0.5 rounded bg-[#a78bfa]/20 text-[#a78bfa] font-bold">WSS</span>
+                  <span className="text-white font-bold">ws://localhost:8000/ws/live</span>
+                  <span className="text-[#a78bfa] ml-auto">Live Stream</span>
+                </div>
+                <p className="text-xs text-[#828894]">Sub-second live telemetry broadcaster. Emits <code className="text-white">NODE_UPDATE</code>, <code className="text-white">ALERT_TRIGGERED</code>, and <code className="text-white">SIREN_STATE</code>.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 5: SECURITY, HASHING & RBAC                                       */}
+      {/* ========================================================================= */}
+      {docTab === 'security' && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="p-6 rounded-2xl border border-[#222222] bg-[#080808] space-y-6">
+            <div className="border-b border-[#1c1c1c] pb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Lock size={18} className="text-[#a3e635]" />
+                  Cryptographic Hashing, Authentication &amp; RBAC
+                </h2>
+                <p className="text-xs text-[#828894] mt-1">Enterprise-grade credential protection, adaptive salt derivation, and signed session governance.</p>
+              </div>
+              <span className="text-[11px] font-mono text-[#f59e0b] bg-[#f59e0b]/10 border border-[#f59e0b]/30 px-3 py-1 rounded-full">
+                Security Architecture
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="p-5 rounded-xl border border-[#262626] bg-[#000000] space-y-3">
+                <div className="flex items-center gap-2 text-white font-bold text-sm">
+                  <span className="text-[#a3e635] font-mono font-black">1.</span>
+                  <span>Password Hashing: bcrypt (10 Salt Rounds)</span>
+                </div>
+                <p className="text-[#a1a1aa] leading-relaxed text-[11px]">
+                  GeoSentinel utilizes the Blowfish-based adaptive key derivation function with <strong>10 salt rounds</strong> (<code className="text-[#a3e635]">bcrypt.genSalt(10)</code>).
+                </p>
+                <div className="p-3 rounded-lg bg-[#0a0a0a] border border-[#1c1c1c] font-mono text-[11px] text-[#a3e635]">
+                  // backend/models/User.js<br />
+                  const salt = await bcrypt.genSalt(10);<br />
+                  const hash = await bcrypt.hash(plainPassword, salt);
+                </div>
+                <p className="text-[11px] text-[#71717a]">
+                  Constant-time comparison (<code className="text-white">bcrypt.compare</code>) guarantees complete resistance against side-channel timing attacks and rainbow tables.
+                </p>
+              </div>
+
+              <div className="p-5 rounded-xl border border-[#262626] bg-[#000000] space-y-3">
+                <div className="flex items-center gap-2 text-white font-bold text-sm">
+                  <span className="text-[#38bdf8] font-mono font-black">2.</span>
+                  <span>Token Signing: HMAC-SHA256 (HS256)</span>
+                </div>
+                <p className="text-[#a1a1aa] leading-relaxed text-[11px]">
+                  All authenticated session tokens are cryptographically signed using the <strong>HS256 algorithm</strong> with a 256-bit server secret key.
+                </p>
+                <div className="p-3 rounded-lg bg-[#0a0a0a] border border-[#1c1c1c] font-mono text-[11px] text-[#38bdf8]">
+                  // backend/middleware/auth.js<br />
+                  jwt.sign(&#123; sub: user.username, role: user.role &#125;, JWT_SECRET, &#123; algorithm: 'HS256', expiresIn: '7d' &#125;)
+                </div>
+                <p className="text-[11px] text-[#71717a]">
+                  Enforces role-based permissions between DGMS Administrators, Mine Safety Engineers, and public guest access.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 6: CITIZEN CRACK REPORTING & LIVE COMMUNITY LOGS                 */}
+      {/* ========================================================================= */}
+      {docTab === 'crack-portal' && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Top Summary Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+            <div className="p-4 rounded-2xl bg-[#080808] border border-[#222222] flex flex-col justify-between">
+              <span className="text-xs text-[#828894] font-medium">Total Citizen Reports</span>
+              <div className="text-2xl sm:text-3xl font-bold text-white mt-2 font-mono">{reports.length}</div>
+              <span className="text-[11px] text-[#71717a] mt-1">Community submitted</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#080808] border border-[#222222] flex flex-col justify-between">
+              <span className="text-xs text-[#828894] font-medium">Corroborated Hazards</span>
+              <div className="text-2xl sm:text-3xl font-bold text-[#22c55e] mt-2 font-mono flex items-center gap-2">
+                <span>{reports.filter(r => r.status === 'Corroborated & Approved').length}</span>
+                <ShieldCheck size={18} className="text-[#22c55e]" />
+              </div>
+              <span className="text-[11px] text-[#22c55e] mt-1">Verified with sensor nodes</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#080808] border border-[#222222] flex flex-col justify-between">
+              <span className="text-xs text-[#828894] font-medium">Pending Triage</span>
+              <div className="text-2xl sm:text-3xl font-bold text-[#f59e0b] mt-2 font-mono flex items-center gap-2">
+                <span>{reports.filter(r => r.status === 'Pending Review').length}</span>
+                <span className="w-2 h-2 rounded-full bg-[#f59e0b] animate-ping" />
+              </div>
+              <span className="text-[11px] text-[#f59e0b] mt-1">Awaiting review</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#080808] border border-[#222222] flex flex-col justify-between">
+              <span className="text-xs text-[#828894] font-medium">Peak Fissure Aperture</span>
+              <div className="text-2xl sm:text-3xl font-bold text-[#fb923c] mt-2 font-mono">
+                {Math.max(...reports.map(r => r.crackWidthEstimateMm), 0)} <span className="text-xs font-normal text-[#71717a] font-sans">mm</span>
+              </div>
+              <span className="text-[11px] text-[#fb923c] mt-1">Sector 3 Highwall Gallery</span>
+            </div>
+          </div>
+
+          {/* Submission Form + Community Log Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Form */}
+            <div className="lg:col-span-6 p-6 rounded-2xl bg-[#080808] border border-[#222222] shadow-xl space-y-5">
+              <div className="border-b border-[#1c1c1c] pb-3.5">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Camera size={18} className="text-[#38bdf8]" />
+                  Log Geological Crack / Fissure
+                </h3>
+                <p className="text-xs text-[#828894] mt-1">
+                  Crowdsourced observations directly calibrate early warning threshold models.
+                </p>
+              </div>
+
+              {submittedSuccess && (
+                <div className="p-3.5 rounded-xl border border-[#22c55e]/40 bg-[#22c55e]/15 text-xs text-[#86efac] flex items-center gap-2.5 animate-fadeIn">
+                  <CheckCircle2 size={18} />
+                  <span>Report {submittedReportId} transmitted to local Mesh Gateway!</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmitReport} className="space-y-4 text-xs">
+                {/* 1. Photo Reference Selection */}
+                <div>
+                  <label className="block text-[#828894] font-semibold mb-2">1. Visual Pattern / Camera Upload</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                    {FISSURE_TEMPLATES.map((tmpl, idx) => (
+                      <button
+                        key={tmpl.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedTemplateIndex(idx);
+                          setCustomPhotoUrl(null);
+                        }}
+                        className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          selectedTemplateIndex === idx && !customPhotoUrl
+                            ? 'border-[#38bdf8] bg-[#38bdf8]/15 ring-1 ring-[#38bdf8]'
+                            : 'border-[#222222] bg-[#000000] hover:border-[#383838]'
+                        }`}
+                      >
+                        <div className="h-14 rounded-lg overflow-hidden bg-black/60 mb-1.5 border border-white/5">
+                          <img src={tmpl.url} alt={tmpl.title} className="w-full h-full object-cover" />
+                        </div>
+                        <span className="text-[10px] font-bold text-white truncate block">{tmpl.title}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-4 py-2 rounded-xl border border-[#262626] bg-[#141414] hover:bg-[#1f1f1f] text-white font-semibold text-xs flex items-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <Upload size={13} className="text-[#a3e635]" />
+                      <span>{customPhotoUrl ? 'Replace Attached Photo' : 'Upload Camera Photo'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Aperture */}
+                <div className="pt-2 border-t border-[#1c1c1c]">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[#828894] font-semibold">2. Estimated Width</label>
+                    <span className="text-base font-bold font-mono text-white">{crackWidth} mm</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={60}
+                    value={crackWidth}
+                    onChange={(e) => setCrackWidth(Number(e.target.value))}
+                    className="w-full h-2 bg-[#1c1c1c] rounded-lg appearance-none cursor-pointer accent-[#38bdf8]"
+                  />
+                </div>
+
+                {/* 3. Location */}
+                <div className="pt-2 border-t border-[#1c1c1c] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[#828894] font-semibold">3. Sector &amp; Coordinates</label>
+                    <button
+                      type="button"
+                      onClick={handleAutoDetectGPS}
+                      className="text-[11px] font-mono text-[#38bdf8] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <MapPin size={12} />
+                      <span>{isGpsAcquired ? 'GPS Locked' : 'Auto-Detect GPS'}</span>
+                    </button>
+                  </div>
+                  <select
+                    value={zone}
+                    onChange={(e) => setZone(e.target.value)}
+                    className="w-full rounded-xl border border-[#262626] bg-[#000000] px-3.5 py-2.5 text-white font-medium focus:outline-none focus:border-[#38bdf8]"
+                  >
+                    <option value="Sector 4 (Village Slope)">Sector 4 (Village Slope - Near High Ground)</option>
+                    <option value="Sector 3 (Incline Gallery)">Sector 3 (Incline Gallery Buffer)</option>
+                    <option value="Sector 2 (Riverbank Embankment)">Sector 2 (Riverbank Embankment)</option>
+                    <option value="Sector 1 (Open Cast Ridge)">Sector 1 (Open Cast Ridge)</option>
+                  </select>
+                </div>
+
+                {/* Submit */}
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-3 rounded-xl bg-[#38bdf8] hover:bg-[#0284c7] text-black font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-md disabled:opacity-50 mt-2"
+                >
+                  {isSubmitting ? 'Transmitting to IoT Mesh Gateway...' : 'Submit Ground Fissure Report'}
+                </button>
+              </form>
+            </div>
+
+            {/* Community Log Feed */}
+            <div className="lg:col-span-6 p-6 rounded-2xl bg-[#080808] border border-[#222222] shadow-xl flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between border-b border-[#1c1c1c] pb-3.5">
+                  <div className="flex items-center gap-2">
+                    <Activity size={16} className="text-[#a3e635]" />
+                    <h3 className="text-sm font-bold text-white tracking-tight">Community Fissure Log Feed</h3>
+                  </div>
+                  <span className="text-[10px] font-mono text-[#828894]">{reports.length} Reports</span>
+                </div>
+
+                <div className="space-y-3 mt-4 max-h-[460px] overflow-y-auto scrollbar-none pr-1">
+                  {reports.map((r) => (
+                    <div key={r.id} className="p-3.5 rounded-xl border border-[#1f1f1f] bg-[#000000] space-y-2">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-mono font-bold text-white">{r.id}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold border ${
+                          r.status === 'Corroborated & Approved'
+                            ? 'bg-[#0c2818] text-[#22c55e] border-[#164e29]'
+                            : r.status === 'Dismissed (Non-critical)'
+                            ? 'bg-[#1e1518] text-[#f87171] border-[#451f26]'
+                            : 'bg-[#291e0a] text-[#f59e0b] border-[#523d13]'
+                        }`}>
+                          {r.status}
+                        </span>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <div className="w-16 h-14 rounded-lg overflow-hidden bg-black shrink-0 border border-white/5">
+                          <img src={r.photoUrl} alt={r.id} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-[#cbd5e1] line-clamp-2 leading-tight">{r.description}</p>
+                          <div className="flex items-center justify-between text-[10px] font-mono text-[#717682] mt-1.5">
+                            <span>{r.zone}</span>
+                            <span className="text-[#f59e0b] font-bold">{r.crackWidthEstimateMm} mm</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 7: DGMS DISASTER SOPS & EVACUATION GUIDELINES                     */}
+      {/* ========================================================================= */}
+      {docTab === 'sop' && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="p-6 rounded-2xl border border-[#222222] bg-[#080808] space-y-6">
+            <div className="border-b border-[#1c1c1c] pb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <ShieldAlert size={18} className="text-[#fb923c]" />
+                  DGMS Mining Safety Standard Operating Procedures (SOP)
+                </h2>
+                <p className="text-xs text-[#828894] mt-1">Official strata hazard thresholds and evacuation protocols prescribed for Jharia coalfield sectors.</p>
+              </div>
+              <span className="text-[11px] font-mono text-[#22c55e] bg-[#22c55e]/10 border border-[#22c55e]/30 px-3 py-1 rounded-full">
+                DGMS Certified
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4.5 rounded-xl border border-[#164e29] bg-[#08170d] space-y-2">
+                <div className="text-xs font-bold text-[#22c55e]">Stage 1-2: Normal Baseline (0-20% Risk)</div>
+                <p className="text-[11px] text-[#86efac] leading-relaxed">
+                  Tilt rate &lt;0.05°/hr, vibration &lt;0.02g. Regular continuous mesh health pinging every 10 seconds. Normal operations permitted across mining face and village roads.
+                </p>
+              </div>
+
+              <div className="p-4.5 rounded-xl border border-[#523d13] bg-[#1a1306] space-y-2">
+                <div className="text-xs font-bold text-[#facc15]">Stage 3: Pre-Warning Advisory (21-50% Risk)</div>
+                <p className="text-[11px] text-[#fef08a] leading-relaxed">
+                  Subsurface strain detected on multiple adjacent nodes. Edge Gateway broadcasts intermittent SMS warnings to Panchayat heads and checks automated siren battery levels.
+                </p>
+              </div>
+
+              <div className="p-4.5 rounded-xl border border-[#5a2e12] bg-[#1f0f06] space-y-2">
+                <div className="text-xs font-bold text-[#fb923c]">Stage 4: Warning &amp; Preparation (51-75% Risk)</div>
+                <p className="text-[11px] text-[#fed7aa] leading-relaxed">
+                  Piezometric pore-water acceleration observed. Heavy earthmoving machinery stopped. Assembly shelters opened, and first-response rescue personnel positioned on North Ridge.
+                </p>
+              </div>
+
+              <div className="p-4.5 rounded-xl border border-[#5c1d24] bg-[#220a0d] space-y-2">
+                <div className="text-xs font-bold text-[#f87171]">Stage 5: Critical Mandatory Evacuation (&gt;75% Risk)</div>
+                <p className="text-[11px] text-[#fca5a5] leading-relaxed">
+                  Knothe failure envelope breached. Physical 110 dB acoustic sirens sound 3 consecutive pulses. Mandatory immediate evacuation of Sector 4 to High Ground Community Center.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
