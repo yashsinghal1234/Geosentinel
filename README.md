@@ -220,13 +220,14 @@ npm run dev
 
 ---
 
-## 🔐 Verified Roles & Access Credentials
+## 🔐 Role-Based Access Control (RBAC)
 
-| Role | Email / ID | Default Password | Permissions |
-|---|---|---|---|
-| 👑 **DGMS Admin (L4)** | `admin@geo.com` | `282007@aA` | Full system access, threshold calibration, assembly zone editing, user governance |
-| 🛡️ **Chief Operator (L3)** | `operator@geosentinel.gov.in` | `password123` | Manual siren dispatch, citizen report triage, sensor mesh telemetry monitoring |
-| 👥 **Public Citizen** | *No login required* | *None* | Village Safety Board, multi-lingual audio warnings, fissure report submission |
+GeoSentinel enforces strict multi-tier permissions:
+- 👑 **DGMS Administrator (L4)**: Full system configuration, per-node threshold calibration, assembly zone editing, and user governance.
+- 🛡️ **Chief Operator (L3)**: Real-time sensor telemetry monitoring, manual siren dispatch, and citizen report triage.
+- 👥 **Public Citizen**: Unlocked access to the Live Village Safety Board, multi-lingual audio warnings, and crowdsourced fissure reporting.
+
+> **Security Note:** All credentials and authentication tokens are cryptographically hashed using salted bcrypt and managed securely via environment configuration and MongoDB Atlas.
 
 ---
 
