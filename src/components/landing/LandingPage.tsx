@@ -75,54 +75,82 @@ export const LandingPage: React.FC = () => {
           Powering early warning analytics for national agencies
         </p>
         
-        {/* Marquee Container */}
+        {/* Marquee Container with edge fade masks */}
         <div className="relative w-full flex overflow-hidden">
-          {/* Inner scrolling track (double width to allow seamless loop) */}
-          <div className="flex w-max animate-marquee opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+          {/* Gradient Edge Masks */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-28 bg-gradient-to-r from-[#000000] to-transparent z-10" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-28 bg-gradient-to-l from-[#000000] to-transparent z-10" />
+
+          {/* Inner scrolling track (two identical halves for 100% seamless infinite loop) */}
+          <div className="flex w-max animate-marquee opacity-70 grayscale hover:grayscale-0 transition-all duration-500">
             
-            {/* Group 1 (Original) */}
-            <div className="flex shrink-0 items-center gap-16 px-8">
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-serif font-bold text-white tracking-tight whitespace-nowrap">Ministry of Coal</span>
+            {/* Track Half 1 */}
+            <div className="flex shrink-0 items-center gap-12 sm:gap-16 pr-12 sm:pr-16">
+              <div className="flex items-center gap-2 select-none">
+                <span className="text-lg sm:text-xl font-serif font-bold text-white tracking-tight whitespace-nowrap">Ministry of Coal</span>
               </div>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-white" />
-                <span className="text-xl font-bold text-white tracking-tight whitespace-nowrap">DGMS</span>
+              <div className="flex items-center gap-2 select-none">
+                <ShieldCheck className="w-5 h-5 text-white shrink-0" />
+                <span className="text-lg sm:text-xl font-bold text-white tracking-tight whitespace-nowrap">DGMS</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-white" />
-                <span className="text-xl font-extrabold text-white tracking-tighter whitespace-nowrap">NDRF</span>
+              <div className="flex items-center gap-2 select-none">
+                <Activity className="w-5 h-5 text-white shrink-0" />
+                <span className="text-lg sm:text-xl font-extrabold text-white tracking-tighter whitespace-nowrap">NDRF</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Zap className="w-5 h-5 text-white" />
-                <span className="text-xl font-bold font-mono text-white tracking-tight whitespace-nowrap">CIMFR</span>
+              <div className="flex items-center gap-1.5 select-none">
+                <Zap className="w-5 h-5 text-white shrink-0" />
+                <span className="text-lg sm:text-xl font-bold font-mono text-white tracking-tight whitespace-nowrap">CIMFR</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Compass className="w-5 h-5 text-white" />
-                <span className="text-xl font-bold text-white tracking-tight whitespace-nowrap">CMPDI</span>
+              <div className="flex items-center gap-2 select-none">
+                <Compass className="w-5 h-5 text-white shrink-0" />
+                <span className="text-lg sm:text-xl font-bold text-white tracking-tight whitespace-nowrap">CMPDI</span>
+              </div>
+              <div className="flex items-center gap-2 select-none">
+                <ShieldCheck className="w-5 h-5 text-[#a3e635] shrink-0" />
+                <span className="text-lg sm:text-xl font-serif font-bold text-white tracking-tight whitespace-nowrap">Geological Survey of India</span>
+              </div>
+              <div className="flex items-center gap-2 select-none">
+                <Activity className="w-5 h-5 text-[#38bdf8] shrink-0" />
+                <span className="text-lg sm:text-xl font-bold text-white tracking-tight whitespace-nowrap">National Disaster Mgmt</span>
+              </div>
+              <div className="flex items-center gap-1.5 select-none">
+                <Zap className="w-5 h-5 text-[#f59e0b] shrink-0" />
+                <span className="text-lg sm:text-xl font-bold font-mono text-white tracking-tight whitespace-nowrap">Coal India Ltd</span>
               </div>
             </div>
 
-            {/* Group 2 (Duplicate for seamless loop) */}
-            <div className="flex shrink-0 items-center gap-16 px-8">
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-serif font-bold text-white tracking-tight whitespace-nowrap">Ministry of Coal</span>
+            {/* Track Half 2 (Exact mirror duplicate) */}
+            <div className="flex shrink-0 items-center gap-12 sm:gap-16 pr-12 sm:pr-16" aria-hidden="true">
+              <div className="flex items-center gap-2 select-none">
+                <span className="text-lg sm:text-xl font-serif font-bold text-white tracking-tight whitespace-nowrap">Ministry of Coal</span>
               </div>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-white" />
-                <span className="text-xl font-bold text-white tracking-tight whitespace-nowrap">DGMS</span>
+              <div className="flex items-center gap-2 select-none">
+                <ShieldCheck className="w-5 h-5 text-white shrink-0" />
+                <span className="text-lg sm:text-xl font-bold text-white tracking-tight whitespace-nowrap">DGMS</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-white" />
-                <span className="text-xl font-extrabold text-white tracking-tighter whitespace-nowrap">NDRF</span>
+              <div className="flex items-center gap-2 select-none">
+                <Activity className="w-5 h-5 text-white shrink-0" />
+                <span className="text-lg sm:text-xl font-extrabold text-white tracking-tighter whitespace-nowrap">NDRF</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Zap className="w-5 h-5 text-white" />
-                <span className="text-xl font-bold font-mono text-white tracking-tight whitespace-nowrap">CIMFR</span>
+              <div className="flex items-center gap-1.5 select-none">
+                <Zap className="w-5 h-5 text-white shrink-0" />
+                <span className="text-lg sm:text-xl font-bold font-mono text-white tracking-tight whitespace-nowrap">CIMFR</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Compass className="w-5 h-5 text-white" />
-                <span className="text-xl font-bold text-white tracking-tight whitespace-nowrap">CMPDI</span>
+              <div className="flex items-center gap-2 select-none">
+                <Compass className="w-5 h-5 text-white shrink-0" />
+                <span className="text-lg sm:text-xl font-bold text-white tracking-tight whitespace-nowrap">CMPDI</span>
+              </div>
+              <div className="flex items-center gap-2 select-none">
+                <ShieldCheck className="w-5 h-5 text-[#a3e635] shrink-0" />
+                <span className="text-lg sm:text-xl font-serif font-bold text-white tracking-tight whitespace-nowrap">Geological Survey of India</span>
+              </div>
+              <div className="flex items-center gap-2 select-none">
+                <Activity className="w-5 h-5 text-[#38bdf8] shrink-0" />
+                <span className="text-lg sm:text-xl font-bold text-white tracking-tight whitespace-nowrap">National Disaster Mgmt</span>
+              </div>
+              <div className="flex items-center gap-1.5 select-none">
+                <Zap className="w-5 h-5 text-[#f59e0b] shrink-0" />
+                <span className="text-lg sm:text-xl font-bold font-mono text-white tracking-tight whitespace-nowrap">Coal India Ltd</span>
               </div>
             </div>
 
