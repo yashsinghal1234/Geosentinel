@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useGeoSentinel } from '../../context/GeoSentinelContext';
 import { TRANSLATIONS } from '../../services/Localization';
-import { QrCodePosterModal } from './QrCodePosterModal';
 import { 
   ShieldAlert, 
   ShieldCheck, 
@@ -9,13 +8,13 @@ import {
   Camera, 
   CheckCircle2, 
   AlertOctagon,
-  Lock,
   X,
   MapPin,
   Upload,
   Activity,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  ChevronDown
 } from '../icons';
 
 // Built-in Geological Fracture Reference Patterns (Instant 1-Click for villagers without camera)
@@ -54,12 +53,12 @@ export const PublicSafetyView: React.FC = () => {
     submitCrackReport,
     language, 
     setLanguage, 
-    submitCheckIn, 
-    setIsLoginModalOpen
+    submitCheckIn
   } = useGeoSentinel();
 
   // Internal Navigation within Village Dashboard
-  const [villageTab, setVillageTab] = useState<'status' | 'report' | 'shelters' | 'checklist'>('status');
+  const [villageTab, setVillageTab] = useState<'status' | 'report' | 'shelters' | 'checklist' | 'docs'>('status');
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
   // Check-In State
   const [residentName, setResidentName] = useState('');
@@ -68,7 +67,6 @@ export const PublicSafetyView: React.FC = () => {
   const [locationNote, setLocationNote] = useState('');
   const [showCheckInModal, setShowCheckInModal] = useState<'safe' | 'help' | null>(null);
   const [hasCheckedIn, setHasCheckedIn] = useState(false);
-  const [showQrModal, setShowQrModal] = useState(false);
 
   // Crack Reporting Form State
   const [reporterName, setReporterName] = useState<string>('');
@@ -96,6 +94,17 @@ export const PublicSafetyView: React.FC = () => {
     if (crackWidth >= 6) return { label: 'Moderate Shear Fissure (6-15mm)', color: 'text-[#f59e0b] bg-[#f59e0b]/15 border-[#f59e0b]/40', icon: Activity };
     return { label: 'Minor Surface Tension (1-5mm)', color: 'text-[#38bdf8] bg-[#38bdf8]/15 border-[#38bdf8]/40', icon: Activity };
   }, [crackWidth]);
+
+  // Tab definitions for the dropdown
+  const tabOptions = [
+    { id: 'status', label: 'Live Emergency Status', icon: Activity, tag: 'Level ' + risk.level, color: 'text-[#a3e635]' },
+    { id: 'report', label: 'Report Ground Fissure', icon: Camera, tag: reports.length + ' Logs', color: 'text-[#38bdf8]' },
+    { id: 'shelters', label: 'Assembly Shelters & Safe Zones', icon: ShieldCheck, tag: assemblyPoints.length + ' Shelters', color: 'text-[#22c55e]' },
+    { id: 'checklist', label: 'Action Checklist & Hotlines', icon: ShieldAlert, tag: 'SOP Guide', color: 'text-[#f59e0b]' },
+    { id: 'docs', label: 'Village Safety Documentation', icon: Sparkles, tag: 'Disaster Manual', color: 'text-[#a78bfa]' }
+  ] as const;
+
+  const activeTabObj = tabOptions.find(t => t.id === villageTab) || tabOptions[0];
 
   // Handle GPS Auto-detection
   const handleAutoDetectGPS = () => {
@@ -191,42 +200,21 @@ export const PublicSafetyView: React.FC = () => {
   return (
     <div className="mx-auto max-w-[1100px] px-4 py-8 sm:px-6 space-y-7 animate-fadeIn">
       {/* ========================================================================= */}
-      {/* 1. TOP HEADER & LOCAL WI-FI HOTSPOT BAR                                   */}
+      {/* 1. TOP HEADER & LOCAL WI-FI HOTSPOT BAR (Cleaned Up)                      */}
       {/* ========================================================================= */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1a1f29] pb-5">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <span className="h-3 w-3 rounded-full bg-[#3fcb7f] animate-ping" />
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              Live Village Safety Board
-            </h1>
-            <span className="text-[11px] font-mono font-semibold text-[#3fcb7f] bg-[#3fcb7f]/10 border border-[#3fcb7f]/30 px-2.5 py-0.5 rounded-full">
-              PUBLIC ACCESS • NO LOGIN
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-[#828894] mt-1">
-            Zone: Jharia Coalfield Sector 4 &amp; High Ground Ridge • Updated Every 3.5s
-          </p>
-        </div>
-
-        {/* Public Navigation Controls */}
+      <div className="border-b border-[#1a1f29] pb-5">
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setShowQrModal(true)}
-            className="flex items-center gap-1.5 rounded-xl border border-[#262c38] bg-[#0c0e14] px-3.5 py-2 text-xs font-semibold text-white hover:border-[#a3e635] hover:text-[#a3e635] transition-all cursor-pointer shadow-sm"
-          >
-            <span>Notice Board QR Code</span>
-            <span className="text-[10px]">↗</span>
-          </button>
-
-          <button
-            onClick={() => setIsLoginModalOpen(true)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[#cbd5e1] hover:text-white bg-[#121620] border border-[#262c38] px-3.5 py-2 rounded-xl transition-colors cursor-pointer shadow-sm"
-          >
-            <Lock className="h-3.5 w-3.5 text-[#f59e0b]" />
-            <span>Official Login</span>
-          </button>
+          <span className="h-3 w-3 rounded-full bg-[#3fcb7f] animate-ping" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+            Live Village Safety Board
+          </h1>
+          <span className="text-[11px] font-mono font-semibold text-[#3fcb7f] bg-[#3fcb7f]/10 border border-[#3fcb7f]/30 px-2.5 py-0.5 rounded-full">
+            PUBLIC ACCESS • NO LOGIN
+          </span>
         </div>
+        <p className="text-xs sm:text-sm text-[#828894] mt-1">
+          Zone: Jharia Coalfield Sector 4 &amp; High Ground Ridge • Updated Every 3.5s
+        </p>
       </div>
 
       {/* Edge Hotspot & Language Switcher Bar */}
@@ -257,56 +245,76 @@ export const PublicSafetyView: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. VILLAGE DASHBOARD TAB SWITCHER                                         */}
+      {/* 2. VILLAGE DASHBOARD DROPDOWN & QUICK NAV SELECTOR                         */}
       {/* ========================================================================= */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        <button
-          onClick={() => setVillageTab('status')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer shrink-0 ${
-            villageTab === 'status'
-              ? 'bg-[#181d26] text-white border border-[#3b4354] shadow-sm'
-              : 'text-[#828894] hover:text-white hover:bg-[#0c0e14]'
-          }`}
-        >
-          <Activity size={15} className={villageTab === 'status' ? 'text-[#a3e635]' : 'text-[#828894]'} />
-          <span>Live Emergency Status</span>
-        </button>
+      <div className="relative">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border border-[#1e232d] bg-[#080a0d] shadow-sm">
+          {/* Main Dropdown Trigger */}
+          <div className="relative w-full sm:w-80">
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-[#262c38] bg-[#0c0e14] hover:border-[#38bdf8]/50 text-white transition-all cursor-pointer shadow-sm text-left group"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <activeTabObj.icon size={16} className={activeTabObj.color} />
+                <span className="text-sm font-bold text-white truncate">{activeTabObj.label}</span>
+              </div>
+              <ChevronDown size={15} className={`text-[#828894] group-hover:text-white transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-        <button
-          onClick={() => setVillageTab('report')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer shrink-0 ${
-            villageTab === 'report'
-              ? 'bg-[#181d26] text-white border border-[#3b4354] shadow-sm'
-              : 'text-[#828894] hover:text-white hover:bg-[#0c0e14]'
-          }`}
-        >
-          <Camera size={15} className={villageTab === 'report' ? 'text-[#38bdf8]' : 'text-[#828894]'} />
-          <span>Report Ground Fissure ({reports.length} Logs)</span>
-        </button>
+            {/* Dropdown Menu Modal */}
+            {isDropdownOpen && (
+              <div className="absolute left-0 top-full mt-2 w-full sm:w-96 rounded-2xl border border-[#262c38] bg-[#0c0e14] p-2 shadow-2xl z-30 space-y-1 animate-in fade-in duration-150 backdrop-blur-xl">
+                {tabOptions.map((opt) => {
+                  const IconComp = opt.icon;
+                  const isSelected = villageTab === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => {
+                        setVillageTab(opt.id as any);
+                        setIsDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl text-left transition-all cursor-pointer ${
+                        isSelected 
+                          ? 'bg-[#181d26] border border-[#3b4354] text-white shadow-sm' 
+                          : 'hover:bg-[#121620] text-[#828894] hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg bg-black/60 border border-white/5 ${opt.color}`}>
+                          <IconComp size={15} />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-white leading-tight">{opt.label}</div>
+                          <span className="text-[10px] text-[#717682]">{opt.tag}</span>
+                        </div>
+                      </div>
+                      {isSelected && <span className="text-[#a3e635] text-xs font-bold font-mono">ACTIVE</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-        <button
-          onClick={() => setVillageTab('shelters')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer shrink-0 ${
-            villageTab === 'shelters'
-              ? 'bg-[#181d26] text-white border border-[#3b4354] shadow-sm'
-              : 'text-[#828894] hover:text-white hover:bg-[#0c0e14]'
-          }`}
-        >
-          <ShieldCheck size={15} className={villageTab === 'shelters' ? 'text-[#22c55e]' : 'text-[#828894]'} />
-          <span>Assembly Shelters ({assemblyPoints.length})</span>
-        </button>
-
-        <button
-          onClick={() => setVillageTab('checklist')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer shrink-0 ${
-            villageTab === 'checklist'
-              ? 'bg-[#181d26] text-white border border-[#3b4354] shadow-sm'
-              : 'text-[#828894] hover:text-white hover:bg-[#0c0e14]'
-          }`}
-        >
-          <ShieldAlert size={15} className={villageTab === 'checklist' ? 'text-[#f59e0b]' : 'text-[#828894]'} />
-          <span>Action Checklist &amp; Hotlines</span>
-        </button>
+          {/* Quick Tab Pills (Desktop) */}
+          <div className="hidden sm:flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+            {tabOptions.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setVillageTab(opt.id as any)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  villageTab === opt.id
+                    ? 'bg-[#181d26] text-white border border-[#3b4354] shadow-sm font-bold'
+                    : 'text-[#828894] hover:text-white hover:bg-[#121620]'
+                }`}
+              >
+                {opt.label.split(' ')[0]} {opt.label.split(' ')[1] || ''}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {hasCheckedIn && (
@@ -741,6 +749,86 @@ export const PublicSafetyView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
+      {/* TAB 5: VILLAGE SAFETY DOCUMENTATION & EARLY WARNING GUIDELINES            */}
+      {/* ========================================================================= */}
+      {villageTab === 'docs' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-2xl border border-[#1e232d] bg-[#080a0d] space-y-6 shadow-sm">
+            <div className="border-b border-[#161920] pb-4">
+              <div className="flex items-center gap-2.5">
+                <Sparkles size={18} className="text-[#a78bfa]" />
+                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                  Village Geotechnical Safety &amp; Early Warning Documentation
+                </h3>
+              </div>
+              <p className="text-xs text-[#828894] mt-1">
+                Standard operating procedures and strata hazard guidelines compiled for community members.
+              </p>
+            </div>
+
+            {/* Section A: Hazard Stage Classification */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-mono uppercase tracking-wider text-[#38bdf8] font-bold">
+                1. Early Warning Risk Severity Stages
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-xl border border-[#164e29] bg-[#08170d] space-y-1">
+                  <div className="text-xs font-bold text-[#22c55e]">Stage 1-2: Normal / Active Monitoring</div>
+                  <p className="text-[11px] text-[#86efac] leading-relaxed">Continuous baseline telemetry. Tilt variation is &lt;0.5° with normal ground stability. No action required by residents.</p>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-[#523d13] bg-[#1a1306] space-y-1">
+                  <div className="text-xs font-bold text-[#facc15]">Stage 3: Pre-Warning Advisory</div>
+                  <p className="text-[11px] text-[#fef08a] leading-relaxed">Minor subsurface strain detected on multiple nodes. Stay alert to siren chimes and inspect residential compound walls for hairline cracks.</p>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-[#5a2e12] bg-[#1f0f06] space-y-1">
+                  <div className="text-xs font-bold text-[#fb923c]">Stage 4: Warning &amp; Preparation</div>
+                  <p className="text-[11px] text-[#fed7aa] leading-relaxed">Piezometric pore-water pressure accelerating shear deformation. Prepare emergency documents, medicines, and move to designated high ground.</p>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-[#5c1d24] bg-[#220a0d] space-y-1">
+                  <div className="text-xs font-bold text-[#f87171]">Stage 5: Critical Mandatory Evacuation</div>
+                  <p className="text-[11px] text-[#fca5a5] leading-relaxed">Knothe failure envelope breached. 110 dB physical acoustic sirens active. Evacuate immediately via designated North Ridge corridor.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Section B: Siren Audio Code Reference */}
+            <div className="space-y-3 pt-3 border-t border-[#161920]">
+              <h4 className="text-xs font-mono uppercase tracking-wider text-[#a3e635] font-bold">
+                2. Solar Gateway Edge Siren Acoustic Signals
+              </h4>
+              <div className="p-4 rounded-xl border border-[#1e232d] bg-[#050608] space-y-2 text-xs">
+                <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                  <span className="font-bold text-white">Three Short High-Pitch Pulses (500Hz)</span>
+                  <span className="text-[#ef4444] font-mono font-bold">MANDATORY EVACUATION</span>
+                </div>
+                <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                  <span className="font-bold text-white">Single Intermittent Beep (30s interval)</span>
+                  <span className="text-[#f59e0b] font-mono font-bold">PRE-WARNING STAGE 3/4</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-white">Two Steady Continuous Chimes</span>
+                  <span className="text-[#22c55e] font-mono font-bold">ALL-CLEAR STABLE</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Section C: Offline Local Wi-Fi Connection Guide */}
+            <div className="space-y-3 pt-3 border-t border-[#161920]">
+              <h4 className="text-xs font-mono uppercase tracking-wider text-[#818cf8] font-bold">
+                3. Zero-Internet Edge Wi-Fi Access
+              </h4>
+              <p className="text-xs text-[#cbd5e1] leading-relaxed">
+                If national cellular towers or fiber internet disconnects during a severe monsoon event, the Solar Edge Gateway broadcasts a local Wi-Fi network named <strong className="text-white">GEOSENTINEL_EDGE_GW01</strong>. Connect to this network on any mobile browser and open <code className="text-[#a3e635] bg-[#161a22] px-1.5 py-0.5 rounded font-mono">http://192.168.4.1</code> to view live emergency status and register your safe arrival.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* ZERO-FRICTION CHECK-IN MODAL (SAFE / SOS)                                 */}
       {/* ========================================================================= */}
       {showCheckInModal && (
@@ -827,12 +915,6 @@ export const PublicSafetyView: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* QR Code Poster Modal */}
-      <QrCodePosterModal
-        isOpen={showQrModal}
-        onClose={() => setShowQrModal(false)}
-      />
     </div>
   );
 };
