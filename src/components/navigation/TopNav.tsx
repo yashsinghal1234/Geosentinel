@@ -6,6 +6,7 @@ import {
   Github, 
   LogOut,
   Lock,
+  Camera
 } from '../icons';
 
 export const TopNav: React.FC = () => {
@@ -64,13 +65,14 @@ export const TopNav: React.FC = () => {
           {/* 2. Citizen Crack & Fissure Portal */}
           <button
             onClick={() => setActiveTab('citizen')}
-            className={`px-3 py-1.5 rounded-full transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'citizen' 
                 ? 'text-white font-bold bg-white/10' 
                 : 'hover:text-white'
             }`}
           >
-            Documentation
+            <Camera size={14} className="text-[#a3e635]" />
+            <span>Report Fissures</span>
           </button>
 
           {/* 3. Operator Mission Control */}
@@ -196,7 +198,7 @@ export const TopNav: React.FC = () => {
             activeTab === 'citizen' ? 'bg-white/15 text-white font-bold' : 'text-[#808080]'
           }`}
         >
-          Documentation
+          Report Fissures
         </button>
         <button
           onClick={() => {
