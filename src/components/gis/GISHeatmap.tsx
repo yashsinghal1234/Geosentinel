@@ -3,72 +3,13 @@ import L from 'leaflet';
 import { useGeoSentinel } from '../../context/GeoSentinelContext';
 import type { SensorNode, GatewayDevice } from '../../types';
 import { 
-  MapPin
+  MapPin,
+  RotateCcw
 } from '../icons';
 
 interface GISHeatmapProps {
   onSelectNode?: (node: SensorNode) => void;
 }
-
-// Master Gateway Hubs (Raspberry Pi 4) matching hardware architecture
-const SECTOR_MASTERS: GatewayDevice[] = [
-  {
-    id: 'MASTER-S1',
-    name: 'Sector-1 Master (Raspberry Pi 4)',
-    code: 'RPI4-SEC1-HUB',
-    hardwareModel: 'Raspberry Pi 4 Model B',
-    sectorNum: 1,
-    lat: 23.7520,
-    lng: 86.4220,
-    ip: '192.168.1.1',
-    mac: 'DC:A6:32:4E:91:A1',
-    status: 'online',
-    internetConnected: true,
-    batteryPct: 99,
-    wifiHotspotSsid: 'GEOSENTINEL_SEC1_MASTER',
-    localSirenActive: false,
-    gsmSignalBars: 5,
-    gsmStatus: 'online',
-    loraStatus: 'connected',
-    edgeAiStatus: 'inferencing',
-    edgeAiInferenceFps: 14.6,
-    solarMpptWatts: 120,
-    selfHealingActive: true,
-    storeAndForwardBufferCount: 0,
-    lastSyncTime: 'Live',
-    firmwareVersion: 'v4.2.0-rpi-edge-ai',
-    cpuTempC: 41.5,
-    ramUsagePct: 28,
-  },
-  {
-    id: 'MASTER-S2',
-    name: 'Sector-2 Master (Raspberry Pi 4)',
-    code: 'RPI4-SEC2-HUB',
-    hardwareModel: 'Raspberry Pi 4 Model B',
-    sectorNum: 2,
-    lat: 23.7468,
-    lng: 86.4180,
-    ip: '192.168.2.1',
-    mac: 'DC:A6:32:4E:91:B2',
-    status: 'online',
-    internetConnected: true,
-    batteryPct: 98,
-    wifiHotspotSsid: 'GEOSENTINEL_SEC2_MASTER',
-    localSirenActive: false,
-    gsmSignalBars: 5,
-    gsmStatus: 'online',
-    loraStatus: 'connected',
-    edgeAiStatus: 'inferencing',
-    edgeAiInferenceFps: 14.8,
-    solarMpptWatts: 120,
-    selfHealingActive: true,
-    storeAndForwardBufferCount: 0,
-    lastSyncTime: 'Live',
-    firmwareVersion: 'v4.2.0-rpi-edge-ai',
-    cpuTempC: 42.1,
-    ramUsagePct: 31,
-  },
-];
 
 // Helper to determine true live node alert status from multi-sensor readings
 export const calculateNodeStatus = (node: SensorNode): 'critical' | 'warning' | 'online' => {
@@ -138,7 +79,9 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     selectedMine,
     selectedSector,
     availableMines,
-    availableSectors
+    availableSectors,
+    setSelectedMine,
+    setSelectedSector
   } = useGeoSentinel();
 
   // Active nodes based on sector filter or default full fleet
@@ -152,15 +95,82 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     return availableSectors.find(s => s.id === selectedSector) || availableSectors[0];
   }, [availableSectors, selectedSector]);
 
+  // Dynamically anchored Sector Masters matching current mine geographic coordinates
+  const sectorMasters = useMemo<GatewayDevice[]>(() => {
+    const baseLat = currentMine?.lat || 23.7520;
+    const baseLng = currentMine?.lng || 86.4220;
+    const mCode = currentMine?.code.split('-')[1] || 'JH';
+    const shortName = currentMine?.name.split(' ')[0] || 'Jharia';
+
+    return [
+      {
+        id: 'MASTER-S1',
+        name: `${shortName} Sector-1 Master (RPi 4)`,
+        code: `RPI4-${mCode}-S1-HUB`,
+        hardwareModel: 'Raspberry Pi 4 Model B',
+        sectorNum: 1,
+        lat: baseLat,
+        lng: baseLng,
+        ip: '192.168.1.1',
+        mac: 'DC:A6:32:4E:91:A1',
+        status: 'online',
+        internetConnected: true,
+        batteryPct: 99,
+        wifiHotspotSsid: `GEOSENTINEL_${mCode}_SEC1_MASTER`,
+        localSirenActive: false,
+        gsmSignalBars: 5,
+        gsmStatus: 'online',
+        loraStatus: 'connected',
+        edgeAiStatus: 'inferencing',
+        edgeAiInferenceFps: 14.6,
+        solarMpptWatts: 120,
+        selfHealingActive: true,
+        storeAndForwardBufferCount: 0,
+        lastSyncTime: 'Live',
+        firmwareVersion: 'v4.2.0-rpi-edge-ai',
+        cpuTempC: 41.5,
+        ramUsagePct: 28,
+      },
+      {
+        id: 'MASTER-S2',
+        name: `${shortName} Sector-2 Master (RPi 4)`,
+        code: `RPI4-${mCode}-S2-HUB`,
+        hardwareModel: 'Raspberry Pi 4 Model B',
+        sectorNum: 2,
+        lat: +(baseLat - 0.0052).toFixed(6),
+        lng: +(baseLng - 0.0040).toFixed(6),
+        ip: '192.168.2.1',
+        mac: 'DC:A6:32:4E:91:B2',
+        status: 'online',
+        internetConnected: true,
+        batteryPct: 98,
+        wifiHotspotSsid: `GEOSENTINEL_${mCode}_SEC2_MASTER`,
+        localSirenActive: false,
+        gsmSignalBars: 5,
+        gsmStatus: 'online',
+        loraStatus: 'connected',
+        edgeAiStatus: 'inferencing',
+        edgeAiInferenceFps: 14.8,
+        solarMpptWatts: 120,
+        selfHealingActive: true,
+        storeAndForwardBufferCount: 0,
+        lastSyncTime: 'Live',
+        firmwareVersion: 'v4.2.0-rpi-edge-ai',
+        cpuTempC: 42.1,
+        ramUsagePct: 31,
+      },
+    ];
+  }, [currentMine]);
+
   // Dynamic Centroid of active nodes & masters
   const mapCenter = useMemo<[number, number]>(() => {
     if (activeNodes.length > 0) {
-      const avgLat = activeNodes.reduce((acc, n) => acc + (n.lat || 23.7482), 0) / activeNodes.length;
-      const avgLng = activeNodes.reduce((acc, n) => acc + (n.lng || 86.4195), 0) / activeNodes.length;
+      const avgLat = activeNodes.reduce((acc, n) => acc + (n.lat || currentMine?.lat || 23.7482), 0) / activeNodes.length;
+      const avgLng = activeNodes.reduce((acc, n) => acc + (n.lng || currentMine?.lng || 86.4195), 0) / activeNodes.length;
       return [avgLat, avgLng];
     }
-    return [23.7482, 86.4195];
-  }, [activeNodes]);
+    return [currentMine?.lat || 23.7482, currentMine?.lng || 86.4195];
+  }, [activeNodes, currentMine]);
 
   // Layer Toggles tailored to ESP32-S3 + Raspberry Pi 4 architecture
   const [basemapType, setBasemapType] = useState<'dark' | 'satellite'>('dark');
@@ -280,17 +290,25 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     tileLayerRef.current = newTiles;
   }, [basemapType]);
 
-  // 3. Smooth Auto-Fit when Mine or Sector changes
+  // 3. Smooth Auto-Fit / Fly-To when Mine or Sector changes
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || activeNodes.length === 0) return;
+    if (!map) return;
 
-    const coords = activeNodes.map(n => [n.lat, n.lng] as [number, number]);
-    if (coords.length > 0) {
+    if (selectedSector !== 'all' && activeNodes.length > 0) {
+      const coords = activeNodes.map(n => [n.lat, n.lng] as [number, number]);
+      if (coords.length > 0) {
+        const bounds = L.latLngBounds(coords);
+        map.flyToBounds(bounds, { padding: [65, 65], maxZoom: 17, duration: 1.2 });
+      }
+    } else if (activeNodes.length > 0) {
+      const coords = activeNodes.map(n => [n.lat, n.lng] as [number, number]);
       const bounds = L.latLngBounds(coords);
-      map.flyToBounds(bounds, { padding: [55, 55], maxZoom: 16, duration: 0.75 });
+      map.flyToBounds(bounds, { padding: [55, 55], maxZoom: 16, duration: 1.2 });
+    } else if (currentMine) {
+      map.flyTo([currentMine.lat, currentMine.lng], currentMine.zoom || 15, { duration: 1.4 });
     }
-  }, [selectedMine, selectedSector, activeNodes.length]);
+  }, [selectedMine, selectedSector, activeNodes, currentMine]);
 
   // 4. Render All Map Layers (ESP32-S3 Pods, RPi 4 Masters, Mesh Links, Risk Plumes)
   useEffect(() => {
@@ -394,7 +412,7 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
     if (showMeshLinks) {
       // 1. Sector Masters to their ESP32-S3 Nodes (WiFi Mesh Links)
       activeNodes.forEach((node) => {
-        const targetMaster = SECTOR_MASTERS.find(m => m.id === (node.masterId || (node.sector === 2 ? 'MASTER-S2' : 'MASTER-S1')));
+        const targetMaster = sectorMasters.find(m => m.id === (node.masterId || (node.sector === 2 ? 'MASTER-S2' : 'MASTER-S1')));
         if (targetMaster) {
           const isWarning = calculateNodeStatus(node) !== 'online';
           L.polyline([[node.lat, node.lng], [targetMaster.lat, targetMaster.lng]], {
@@ -408,46 +426,48 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
       });
 
       // 2. Inter-Master LoRa SX1278 Bridge (Between Sector-1 Master and Sector-2 Master)
-      L.polyline([[SECTOR_MASTERS[0].lat, SECTOR_MASTERS[0].lng], [SECTOR_MASTERS[1].lat, SECTOR_MASTERS[1].lng]], {
-        color: '#c084fc', // Purple LoRa link
-        weight: 2.5,
-        dashArray: '6, 6',
-        opacity: 0.9,
-      }).addTo(group);
+      if (sectorMasters.length >= 2) {
+        L.polyline([[sectorMasters[0].lat, sectorMasters[0].lng], [sectorMasters[1].lat, sectorMasters[1].lng]], {
+          color: '#c084fc', // Purple LoRa link
+          weight: 2.5,
+          dashArray: '6, 6',
+          opacity: 0.9,
+        }).addTo(group);
 
-      // LoRa Inter-Master ACK Label Chip
-      const midLat = (SECTOR_MASTERS[0].lat + SECTOR_MASTERS[1].lat) / 2;
-      const midLng = (SECTOR_MASTERS[0].lng + SECTOR_MASTERS[1].lng) / 2;
-      const loraLabelIcon = L.divIcon({
-        className: 'custom-chip-icon',
-        html: `
-          <div style="
-            background: #180d2b;
-            border: 1.5px solid #a855f7;
-            border-radius: 6px;
-            padding: 2px 7px;
-            font-family: monospace;
-            font-size: 10px;
-            font-weight: 700;
-            color: #d8b4fe;
-            white-space: nowrap;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.8);
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-          ">
-            <span>📡 LoRa (SX1278) Inter-Master Bridge • ACK Sync</span>
-          </div>
-        `,
-        iconSize: [220, 22],
-        iconAnchor: [110, 11],
-      });
-      L.marker([midLat, midLng], { icon: loraLabelIcon, interactive: false }).addTo(group);
+        // LoRa Inter-Master ACK Label Chip
+        const midLat = (sectorMasters[0].lat + sectorMasters[1].lat) / 2;
+        const midLng = (sectorMasters[0].lng + sectorMasters[1].lng) / 2;
+        const loraLabelIcon = L.divIcon({
+          className: 'custom-chip-icon',
+          html: `
+            <div style="
+              background: #180d2b;
+              border: 1.5px solid #a855f7;
+              border-radius: 6px;
+              padding: 2px 7px;
+              font-family: monospace;
+              font-size: 10px;
+              font-weight: 700;
+              color: #d8b4fe;
+              white-space: nowrap;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.8);
+              display: inline-flex;
+              align-items: center;
+              gap: 4px;
+            ">
+              <span>📡 LoRa (SX1278) Inter-Master Bridge • ACK Sync</span>
+            </div>
+          `,
+          iconSize: [220, 22],
+          iconAnchor: [110, 11],
+        });
+        L.marker([midLat, midLng], { icon: loraLabelIcon, interactive: false }).addTo(group);
+      }
     }
 
     // C. RENDER SECTOR MASTER GATEWAYS (Raspberry Pi 4 Hubs)
     if (showMasters) {
-      SECTOR_MASTERS.forEach((master) => {
+      sectorMasters.forEach((master) => {
         const masterIcon = L.divIcon({
           className: 'custom-master-pin',
           html: `
@@ -925,6 +945,101 @@ export const GISHeatmap: React.FC<GISHeatmapProps> = ({ onSelectNode }) => {
 
   return (
     <div className="space-y-4 select-none">
+      {/* 0. DYNAMIC MINE BASIN & SECTOR NAVIGATOR */}
+      <div className="p-4 rounded-[16px] border border-[#222222] bg-[#0c0d10] space-y-3 shadow-xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1c1f26] pb-3">
+          {/* Left: Active Basin Info */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#a3e635]/10 border border-[#a3e635]/30 flex items-center justify-center text-[#a3e635]">
+              <MapPin size={18} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-white tracking-tight font-sans">
+                  {currentMine.name}
+                </h3>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#1f232b] text-[#38bdf8] font-semibold border border-[#2b323d]">
+                  {currentMine.state}
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#1f232b] text-[#a3e635] font-semibold border border-[#2b323d]">
+                  {currentMine.code}
+                </span>
+              </div>
+              <p className="text-[11px] text-[#828894] font-mono mt-0.5">
+                {currentMine.location} • GPS: {currentMine.lat.toFixed(4)}°N, {currentMine.lng.toFixed(4)}°E • Zoom: {currentMine.zoom || 15}x
+              </p>
+            </div>
+          </div>
+
+          {/* Right: Quick Basin Fly Controls */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const map = mapInstanceRef.current;
+                if (map && currentMine) {
+                  map.flyTo([currentMine.lat, currentMine.lng], currentMine.zoom || 15, { duration: 1.2 });
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#2a2f3a] bg-[#14171d] hover:bg-[#1f242e] text-white text-xs font-mono transition-colors cursor-pointer"
+              title="Fly camera to center of this mine basin"
+            >
+              <RotateCcw size={12} className="text-[#a3e635]" />
+              <span>Recenter Basin</span>
+            </button>
+
+            {/* Direct Mine Basin Selector Dropdown / Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto">
+              {availableMines.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => {
+                    setSelectedMine(m.id);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer border whitespace-nowrap ${
+                    m.id === selectedMine
+                      ? 'bg-[#1a2214] border-[#a3e635]/60 text-[#a3e635] shadow-sm'
+                      : 'bg-[#111317] border-[#22262e] text-[#828894] hover:text-white hover:bg-[#181c22]'
+                  }`}
+                >
+                  <span>{m.name.split(' ')[0]}</span>
+                  <span className="ml-1 text-[10px] opacity-70">({m.state.substring(0, 2).toUpperCase()})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Sector Selection Row */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-mono scrollbar-none">
+          <span className="text-[#64748b] text-[11px] uppercase tracking-wider font-bold whitespace-nowrap mr-1">
+            Active Perimeter:
+          </span>
+          {availableSectors.map((s) => {
+            const isActive = s.id === selectedSector;
+            return (
+              <button
+                key={s.id}
+                onClick={() => {
+                  setSelectedSector(s.id);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-[#161a22] border-[#38bdf8]/60 text-[#38bdf8] shadow-sm'
+                    : 'bg-[#0f1115] border-[#1c2028] text-[#717682] hover:text-white hover:bg-[#141820]'
+                }`}
+              >
+                <span>{s.shortName}</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                  isActive ? 'bg-[#38bdf8]/20 text-[#38bdf8]' : 'bg-[#1a1d24] text-[#555]'
+                }`}>
+                  {s.id === 'all' ? activeNodes.length : s.activeSensors} pods
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* 1. TOP CONTROLS & LAYER BAR */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-[16px] border border-[#181b20] bg-[#0a0c0f] text-xs font-mono">
         {/* Layer Checkboxes */}
